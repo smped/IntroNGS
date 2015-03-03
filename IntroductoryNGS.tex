@@ -1,0 +1,57 @@
+%
+% Example Workshop Handout with title page and a section demonstrating
+% the different environments defined in the top matter
+%
+\documentclass[a4paper,12pt,twoside]{memoir}
+\usepackage{btp}    % Use the trainermanual package option (i.e. \usepackage[trainermanual]{btp}) to generate the Trainer's version of the manual
+\usepackage{url}
+\usepackage{underscore}
+\usepackage{color}
+
+% Enable line breaks after every alphabetic character in the url package
+\expandafter\def\expandafter\UrlBreaks\expandafter{\UrlBreaks \do\a\do\b\do\c\do\d\do\e\do\f\do\g\do\h\do\i\do\j\do\k\do\l\do\m\do\n\do\o\do\p\do\q\do\r\do\s\do\t\do\u\do\v\do\w\do\x\do\y\do\z\do\A\do\B\do\C\do\D\do\E\do\F\do\G\do\H\do\I\do\J\do\K\do\L\do\M\do\N\do\O\do\P\do\Q\do\R\do\S\do\T\do\U\do\V\do\W\do\X\do\Y\do\Z}
+
+\usepackage{graphicx}
+\DeclareGraphicsExtensions{.pdf,.png,.jpg}
+\graphicspath{ {./images/} }
+
+\usepackage[T1]{fontenc}
+\newcommand{\spCite}[1]{\textsuperscript{\cite{#1}}}
+
+% Set some Workshop specific info
+\setWorkshopTitle{Introduction To NGS Data \& Analytic Tools}
+\setWorkshopVenue{Adelaide, South Australa}
+\setWorkshopDate{October 2014}
+\setWorkshopAuthor{Steve Pederson\\
+Bioinformatics Centre\\
+University Of Adelaide}
+
+
+\begin{document}
+
+%
+% Workshop Title Page
+%
+\workshoptitlepage
+
+\input{chapters/Chapter1}
+\clearpage
+\input{chapters/Chapter2}
+\clearpage
+\input{chapters/Chapter3}
+\clearpage
+\input{chapters/Chapter4}
+\clearpage
+\input{chapters/Chapter5}
+%\clearpage
+%\begin{appendices}
+%\input{chapters/Appendix}
+%\end{appendices}
+
+% \label{Bibliography}
+
+% \lhead{\emph{Bibliography}} % Change the page header to say "Bibliography"
+% \bibliographystyle{unsrtnat} % Use the "unsrtnat" BibTeX style for formatting the Bibliography
+% \bibliography{Bibliography} % The references (bibliography) information are stored in the file named "Bibliography.bib"
+
+\end{document}
