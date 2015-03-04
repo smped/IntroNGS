@@ -14,11 +14,11 @@ Before we can begin to analyse any data, it is helpful to understand how it was 
 Whilst there are numerous platforms for generation of NGS data, today we will look at the Illumina \textit{Sequencing by Synthesis} method, which is one of the most common methods in use today.
 Many of you will be familiar with the process involved, but it may be worth looking at the following 5-minute video from Illumina: \url{http://youtu.be/womKfikWlxM} 
 As setting up the sound with the VMs can be tricky, it will be easier to view this from your own regular browser.
-Briefly minimise the VM, open your regular browser \& please use your headphones if you brought them. \\
+Briefly minimise the VM (see Section 1.4), open your regular browser \& please use your headphones if you brought them. \\
 \end{steps}
 
 \begin{note}
-This video refers to the process \textit{tagmentation}.%\spCite{tagmentation}.
+This video refers to the process \textit{tagmentation}.
 This is a relatively recent method for fragmenting \& attaching adaptors to DNA, with an alternative, more traditional method being sonication, poly-adenylation \& attachment of appropriate adaptors in separate steps.
 \end{note}
 
@@ -33,6 +33,7 @@ What do you think they might be? \\
 \begin{answer}
 1) Ligation of the wrong base during sequencing \\
 2) Insertions \& deletions \\
+It's the same basic errors as normal DNA replication, but without the \textit{in vivo} DNA repair mechanisms.
 \end{answer}
 
 Will these errors have a more significant effect if they occur during the sequence detection stage, or during generation of the DNA clones within each cluster? \\
@@ -62,7 +63,7 @@ zcat reads1.fq.gz | head
 
 \begin{information}
 In the above command, we have used a trick commonly used in Linux systems where we have taken the output of one command (\texttt{zcat reads1.fq.gz}) and sent it to another command (\texttt{head}) by using the \textit{pipe symbol} (|).
-This is literally like sticking a pipe on the end of a process \& redirecting the output to another one.
+This is literally like sticking a pipe on the end of a process \& redirecting the output to the input another process.
 If you think of things as being like a data factory you can almost visualise it.
 There are no limits to the number of commands that you can string together using this trick. \\
 \end{information}
@@ -70,13 +71,14 @@ There are no limits to the number of commands that you can string together using
 \begin{warning}
 \large{Don't Panic!!!} \\
 \normalsize
-If you find that the terminal has become unresponsive, or you are seeing an unexpected stream of data fly past, you can abort whichever process is currently consuming the computer by entering \texttt{Ctrl-c}.
+If at some stage today you find that the terminal has become unresponsive, or you are seeing an unexpected stream of data fly past, you can abort whichever process is currently running in the terminal by entering \texttt{Ctrl-c}.
 This is an instruction to the computer to `kill the current process.' \& you may be surprised at how often this comes in handy.
+Even experienced programmers rely on this trick from time to time.
 \end{warning}
 
 \begin{note}
 In the output from the above terminal command, we have obtained the first 10 lines of the gzipped fastq file.
-This gives a clear view of the fastq file format, where each read spans four lines.
+This gives a clear view of the fastq file format, where each individual read spans four lines.
 These lines are:
 \begin{enumerate}
 \item The read identifier
@@ -122,27 +124,48 @@ The two files will have this identical structure where the order of the sequence
 This way when they are read as a pair, they can be stepped through read-by-read \& the integrity of the data will be intact.
 \end{steps}
 
+
+\subsubsection{The Illumina Chastity Filter}
 \begin{information}
-Is is also worth noting that todays reads come from a version of the Illumina \textit{casava} pipeline which is \textless 1.8, and which is a relatively common format.
-For more recent reads, which have used \textgreater 1.8 of the casava pipeline, there is an additional field in the identifier which indicates whether a read would have failed an initial QC check. 
-An example of this format is:
+It is also worth noting that the reads we've just glanced at come from a version of the Illumina \textit{casava} pipeline which is \textless 1.8, and which is a relatively common format.
+For more recently generated reads which have used \textgreater 1.8 of the casava pipeline, there is an additional field in the identifier which indicates whether a read would have \textit{failed} an initial QC check. 
+An example of this format would be:
 \begin{lstlisting}
 @D5B4KKQ1:554:C4YHPACXX:4:1101:1084:2100 1:Y:0:
 \end{lstlisting}
 Note the ``Y'' in the final fields, which indicates this sequence would have failed QC.
-These low-quality reads were filtered out in early versions of the pipeline and were omitted from the fastq file.
+These low-quality reads were automatically removed in early versions of the pipeline and were omitted from the fastq file.
 However, they are now included with this additional field indicated in the read identifier.
 Inspection of the read identifiers will enable you to find out which version of the casava pipeline has been used, and whther you need to perform any additional filtering steps to remove low quality reads. 
 The tool \texttt{fastq_illumina_filter} is designed to remove these reads for you \& the tool, along with usage instructions can be found at \url{http://cancan.cshl.edu/labmembers/gordon/fastq_illumina_filter/}\\
 \end{information}
 
+\begin{steps}
+An alternate set of reads which we'll also explore today is in included in the directory \texttt{\~{}/rawData/iCLIP}.
+These are immunopreciptated mRNAs and were supplied by some collaborators who'd either forgotten the removal of low-quality reads or had deliberately neglected step to increase read numbers.
+Note that these files are not compressed and are essentially plain text files, so we can inspect them using the command \texttt{head}.\\
+\end{steps}
+
+\begin{lstlisting}
+cd ~/rawData/iCLIP
+head -n12 iCLIP_Sample1.fastq
+\end{lstlisting}
+
+Note that the header lines follow the format described on the previous page with this additional field at the end of the line.
+\begin{questions}
+Of the first three reads which have been printed to the terminal above, which one(s) will have failed the chastity filter, and which ones will have passed the filter?\\
+\begin{answer}
+The first read would have failed (i.e. it is low quality), whilst the other two will have passed.
+\end{answer}
+\end{questions}
+
 \subsubsection{Quality Scores}
 \begin{information}
-Assuming that we understand the structure of the sequence information the only other line in the fastq format that needs some introduction is the quality score information.
+The only other line in the fastq format that really needs some introduction is the quality score information.
 These are presented as single \textit{ascii} text characters for simple visual alignment with the sequence and each character corresponds to a numeric score.
 In the ascii text system, each character has a representation in binary, which can also be translated to decimal numbers.\\
 
-The first printable character is `!' which corresponds to the value 33. 
+The first printable character in the ascii system is `!' which corresponds to the value 33. 
 (A space is also considered printable and has the value 32, but we can ignore that)
 In short, the values 33-47 are symbols like !, \", \#, \$ etc, whereas the values 48-57 are the characters 0-9.
 Next are some more symbols (including @ for the value 64), with the upper case characters representing the values 65-90 \& the lower case letters representing the values 97-122.
@@ -178,8 +201,12 @@ LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL......................................
 \normalsize
 
 \begin{questions}
-In the PHRED +64 coding system, the character `@' is used.
-Can you think of any potential issues this would cause when searching for it within a fastq file? \\
+Which coding system do you think has been used for the RNA-Seq reads that we have? \\
+\begin{answer}
+PHRED+33
+\end{answer}
+In the PHRED +33 coding system, the character `@' is used.
+Can you think of any potential issues this would cause when searching within a fastq file? \\
 \begin{answer}
 It is also included as the beginning of each sequence identifier.
 If located at the beginning of a string of quality scores, this may be misunderstood as a sequence identifier.
@@ -218,15 +245,17 @@ A common threshold for inclusion of a sequence is a Q score >20.
 Considering the millions of sequences obtained from a flowcell, do you think that NGS is likely to be highly accurate?\\
 \begin{answer}
 This is really just a point for everyone to ponder.
+People should be encouraged to realise that our data will have a lot of errors...
 \end{answer}
 \end{questions}
 
+\clearpage
 \section{Using fastqc}
 \begin{steps}
 A common tool for checking the quality of a fastq file is the program \texttt{fastqc}.
 As with all programs on the command line, we need to see how it works before we use it.
 The following command will open the help file in the \texttt{less} pager which we used earlier.
-To navigate through the file, use the \textless spacebar\textgreater ~to move forward, \textless \texttt{b}\textgreater ~to move back a page \& \textless \texttt{q}\textgreater ~to exit the manual. \\
+To navigate through the file, use the \textless spacebar\textgreater ~to move forward a page, \textless \texttt{b}\textgreater ~to move back a page \& \textless \texttt{q}\textgreater ~to exit the manual. \\
 \begin{lstlisting}
 fastqc -h | less
 \end{lstlisting}
@@ -235,8 +264,7 @@ fastqc -h | less
 \begin{note}
 Fastqc will create an html report on each file you submit, which can be opened from any web browser, such as \texttt{firefox}
 As seen in the help page, \texttt{fastqc} can be run from the command line or from a graphic user interface (GUI).
-Using a GUI is generally intuitive so today we will look at the command line usage, as that will give you more flexibility \& options
-going forward.
+Using a GUI is generally intuitive so today we will look at the command line usage, as that will give you more flexibility \& options going forward.
 Some important options for the command can be seen in the manual.\\
 \end{note}
 \begin{steps}
@@ -252,6 +280,9 @@ Look up the following options to find what they mean. \\
    \hline
   -t & \\
    & \\
+   \hline
+   -a & \\
+   & \\
   \hline
 \end{tabular}
 \end{center}
@@ -262,8 +293,8 @@ As we have two RNA-Seq files, we will first need to create the output directory,
 This can be much quicker when dealing with large experiments.
 \begin{lstlisting}
 cd ~/rawData/RNASeq
-mkdir ~/QC
-fastqc -o ~/QC -t 2 reads1.fq.gz reads2.fq.gz
+mkdir -p ~/QC/RNASeq
+fastqc -o ~/QC/RNASeq -t 2 reads1.fq.gz reads2.fq.gz
 \end{lstlisting}
 It's probably a good idea to scribble a note next to each line if you didn't understand what you did.
 If you haven't seen the command \texttt{mkdir} before, check the help page 
@@ -277,17 +308,21 @@ The above command gave both files to fastqc, told it where to write the output (
 The reports are in the html files, with all of the plots stored in the zip files. 
 To look at the QC report for each file, we can use \texttt{firefox}.
 \begin{lstlisting}
-cd ~/QC
+cd ~/QC/RNASeq
 ls -lh
-firefox reads1.fq_fastqc.html reads2.fq_fastqc.html
+firefox reads1.fq_fastqc.html reads2.fq_fastqc.html &
 \end{lstlisting}
 The left hand menu contains a series of click-able links to navigate through the report, with a quick guideline about each section given as a tick, cross of exclamation mark.
 \end{steps}
 
-\begin{information}
-The above method will be ``driven'' form the terminal so this will appear suspended until you close firefox.
-If you prefer to use a graphic interface for each folder to open a report by clicking, open this window from the drop-down menu.
-\end{information}
+\begin{note}
+Two hints which may make your inspection of these files easier are:
+\begin{enumerate}
+	\item To zoom out in \texttt{firefox} use the shortcut Ctrl-. Reset using Ctrl0 and zoom in using Ctrl+
+	\item You can open these directly from a traditional directory view by double clicking on the .html file.
+\end{enumerate}
+If your terminal seems busy after you close \texttt{firefox}, use the 'Ctrl C' shortcut to stop whatever is keeping it busy
+\end{note}
 
 \begin{questions}
 How many sequences are there in both files?\\
@@ -302,16 +337,16 @@ How long are the sequences in these files?\\
 
 \section{Interpreting the FASTQC Report}
 \begin{note}
-As we work through the QC reports we will develop a series of criteria for filtering our files.
+As we work through the QC reports we will develop a series of criteria for filtering and cleaning up our files.
 There is usually no perfect solution, we just have to make the best decisions we can based on the information we have.
 Some sections will prove more informative than others, and some will only be helpful if we are drilling deeply into our data.
-Firstly we'll juts look at a selection of the plots.
+Firstly we'll just look at a selection of the plots.
 We'll investigate some of the others with some `bad' data later.
 \end{note}
 
 \subsubsection*{Per Base Sequence Quality}
 \begin{steps}
-Both of the files should be open in firefox in separate tabs.
+Both of the files should be open in \texttt{firefox} in separate tabs.
 Perform the following steps on both files.
 Click on the \texttt{Per base sequence quality} hyperlink on the left of the page \& you will see a boxplot of the QC score distributions for every position in the read.
 This is the main plot that bioinformaticians will look at for making informed decisions about later stages of the analysis.
@@ -324,13 +359,14 @@ They clearly drop off as the read extends\\
 \end{answer} 
 \end{questions}
 
-We will deal with trimming the reads in a following section, but start to think about what you should do to the reads to ensure the highest quality in your final alignment \& analysis.
+We will deal with trimming the reads in a later section, but start to think about what you should do to the reads to ensure the highest quality in your final alignment \& analysis.
 
 \paragraph{Per Tile Sequence Quality}
 This section just gives a quick visualisation about any physical effects on sequence quality due to the tile within the each flowcell.
 For the first file, you will notice an even breakdown in the quality of sequences near the end of the reads across all tiles.
 In our second QC report, you will notice a poor quality around the 25th base in the 2nd (or 3rd) tile.
 Generally, this would only be of note if drilling deeply to remove data from tiles with notable problems.
+Most of the time we don't factor in spatial effects, unless alternative approaches fail to address the issues we are dealing with.
 
 \paragraph*{Per Sequence Quality Scores}
 This is just the distribution of average quality scores for each sequence.
@@ -350,8 +386,41 @@ In our first plot, the green \& blue sequences are the same motif, just shifted 
 No information is given as the source of these sequences, and you would expect to see barcode sequences or motifs that correspond to any digestion protocols here.
 
 \subsection{Some Flawed Data}
-To save running the report on some bad data, let's look at a publicly available report from some bad data.
-In firefox, head to \url{http://www.bioinformatics.babraham.ac.uk/projects/fastqc/bad_sequence_fastqc.html} \& look through the report.
+Let's run \texttt{fastqc} \& inspect the iCLIP dataset, which is a version of RNA-Seq data where the RNA has been pulled down via IP.
+
+\begin{lstlisting}
+mkdir ~/QC/iCLIP
+cd ~/rawData/iCLIP
+fastqc -o ~/QC/iCLIP -t 2 iCLIP_Sample1.fastq iCLIP_Sample2.fastq
+cd ~/QC/iCLIP
+firefox iCLIP_Sample1.fastqc.html iCLIP_Sample1.fastqc.html &
+\end{lstlisting}
+
+There are several things to note about these reports.
+Firstly, we know from inspection that these fastq libraries contain reads which have failed the Illumina Chastity filter.
+We would expect these to show up in the \textit{Basic Statistics} table, but they don't.
+
+\begin{questions}
+How would we know that there are low quality sequences here if the Illumina flag is ignored?\\
+\begin{answer}
+The overall lower distribution of the quality scores should raise a red flag to us. \\
+\end{answer}
+\end{questions}
+
+\paragraph{Adapter Contamination}
+Go to the over-represented sequences section for Sample1.
+There seem to be a large number of over-represented sequences here which are not listed as matching any known sequences.
+Scanning through these manually is near impossible and solving this may take some leg work
+Shift over to the same section in Sample2 and you will notice about 23\% of sequences seem to contain an Illumina Paired End PCR Primer.
+The next line also contains matches to this but with some indels. \\
+
+Now head to the \textit{Adapter Content} section of each report \& consider what we are seeing here.
+By the time you reach the 60th nucleotide in the reads from Sample1, this plot tells you that $>50$\% of reads contain matches to the Illumina Universal Adapter.
+
+
+\subsection{Some More Example Reports}
+We'll actually try to clean the iCLIP dataset up in the next chapter, but for now let's just head to another sample plot at \url{http://www.bioinformatics.babraham.ac.uk/projects/fastqc/bad_sequence_fastqc.html}
+
 
 \paragraph{Per Base Sequence Quality}
 Looking at the first plot, we can clearly see this data is not as high quality as the one we have been exploring ourselves.
@@ -432,4 +501,4 @@ Zhou, X and Rokas, A. (2014). \textit{Prevention, diagnosis and treatment of hig
 
 This has been included on your VM as the file QC.pdf \& contains many examples of good data and low quality data, as well as a detailed discussion.
 If you feel like you are running ahead of schedule, or if you finish early it may be a good opportunity to download \& read through the article.
-The workflow given at the end may be particularly useful.
+The workflow given at the end may also be particularly useful.

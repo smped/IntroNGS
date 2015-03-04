@@ -17,7 +17,7 @@ We should also check the help page for the \texttt{fastx_trimmer} command
 \begin{steps}
 \begin{lstlisting}
 cd ~
-mkdir trimmedData
+mkdir -p trimmedData/RNASeq
 fastx_trimmer -h
 \end{lstlisting}
 \end{steps}
@@ -29,9 +29,9 @@ As this tool cannot process gzipped (i.e. compressed) files, we can thus decompr
 \begin{lstlisting}
 cd ~/rawData/RNASeq
 zcat reads1.fq.gz | fastx_trimmer -Q 33 -f 1 -l 32 -z -o \
-   ~/trimmedData/reads1_trimmed.fq.gz
+   ~/trimmedData/RNASeq/reads1_trimmed.fq.gz
 zcat reads2.fq.gz | fastx_trimmer -Q 33 -f 1 -l 32 -z -o \
-   ~/trimmedData/reads2_trimmed.fq.gz
+   ~/trimmedData/RNASeq/reads2_trimmed.fq.gz
 \end{lstlisting}
 \end{steps}
 
@@ -49,8 +49,8 @@ We used the following options in the command above:
 \begin{steps}
 Now we can run \texttt{fastqc} on the trimmed files and visualise the quality scores.
 \begin{lstlisting}
-cd ~/trimmedData
-fastqc -o ~/QC -t 2 reads1_trimmed.fq.gz reads2_trimmed.fq.gz
+cd ~/trimmedData/RNASeq
+fastqc -o ~/QC/RNASeq -t 2 reads1_trimmed.fq.gz reads2_trimmed.fq.gz
 \end{lstlisting}
 Open the new QC reports in \texttt{firefox} \& compare with the original reports.
 \end{steps}
@@ -65,7 +65,7 @@ First we'll have a look at the help page, then we  run the following command to 
 cd ~/rawData/RNASeq
 fastq_quality_trimmer -h
 zcat reads1.fq.gz | fastq_quality_trimmer -Q 33 -t 20 -l 32 -z -o \
-   ~/trimmedData/reads1_qual_trimmed.fq.gz
+   ~/trimmedData/RNASeq/reads1_qual_trimmed.fq.gz
 \end{lstlisting}
 \end{steps}
 
@@ -82,8 +82,8 @@ zcat reads1.fq.gz | fastq_quality_trimmer -Q 33 -t 20 -l 32 -z -o \
 \begin{steps}
 Run the same process on the 2nd pair in the set of reads, then inspect the QC report from \texttt{fastqc} using \texttt{firefox}.
 \begin{lstlisting}
-cd ~/trimmedData
-fastqc -o ~/QC -t 2 reads1_qual_trimmed.fq.gz reads2_qual_trimmed.fq.gz
+cd ~/trimmedData/RNASeq
+fastqc -o ~/QC/RNASeq -t 2 reads1_qual_trimmed.fq.gz reads2_qual_trimmed.fq.gz
 \end{lstlisting}
 \end{steps}
 
@@ -108,7 +108,7 @@ Paired end samples need to keep the the paired structure of the reads intact bet
 Would this structure be potentially disrupted by either of these methods? \\
 \begin{answer}
 Yes, quality based trimming may result in the read being discarded in only one of the pairs. 
-This would make any paired end analysis much more difficult. \\
+This would make any paired end analysis much more difficult and further steps would need to be taken to return the files to the correctly paired format.\\
 \end{answer}
 \end{questions}
 
@@ -124,14 +124,14 @@ By now we are becoming familiar with the commands, so once again let's create ne
 Once these processes are complete, inspect the reports obtained by \texttt{fastqc}.
 \begin{lstlisting}
 cd ~
-mkdir filteredData
+mkdir -p filteredData/RNASeq
 cd ~/rawData/RNASeq
 zcat reads1.fq.gz | fastq_quality_filter -Q 33 -q 20 -p 90 -z -o \
-   ~/filteredData/reads1_qual_filtered.fq.gz
+   ~/filteredData/RNASeq/reads1_qual_filtered.fq.gz
 zcat reads2.fq.gz | fastq_quality_filter -Q 33 -q 20 -p 90 -z -o \
-   ~/filteredData/reads2_qual_filtered.fq.gz
-cd ~/filteredData
-fastqc -o ~/QC -t 2 reads1_qual_filtered.fq.gz reads2_qual_filtered.fq.gz
+   ~/filteredData/RNASeq/reads2_qual_filtered.fq.gz
+cd ~/filteredData/RNASeq
+fastqc -o ~/QC/RNASeq -t 2 reads1_qual_filtered.fq.gz reads2_qual_filtered.fq.gz
 \end{lstlisting}
 \end{steps}
 
@@ -187,7 +187,7 @@ For the following code, use the help page to answer the following questions.
 Note that the file \texttt{adapters.fa} is also be required, which contains the Illumina adapter sequences.
 \begin{lstlisting}
 cd ~/rawData/RNASeq
-fastq-mcf adapters.fa reads1.fq.gz reads2.fq.gz -o ~/filteredData/reads1_mcffilt.fq.gz -o ~/filteredData/reads2_mcffilt.fq.gz -q 30 -P 33 -l 32 --max-ns 1  
+fastq-mcf adapters.fa reads1.fq.gz reads2.fq.gz -o ~/filteredData/RNASeq/reads1_mcffilt.fq.gz -o ~/filteredData/RNASeq/reads2_mcffilt.fq.gz -q 30 -P 33 -l 32 --max-ns 1  
 \end{lstlisting}
 \end{steps}
 
@@ -220,16 +220,46 @@ Not really. As long as both are able to be aligned to the reference.
 
 
 \section{Adapter Clipping}
-\begin{advanced}
-The data we have been using above showed no contamination from adapter sequences, but there are tools for removing these if present.
-One that is installed on the computers we are using is \texttt{fastx_clipper}.
-Have a look at the help page \& given your experience above, see if you can understand how you would use this tool. \\
+The RNA-Seq data we have been using above showed no contamination from adapter sequences, but there are tools for removing these if present.
+As this data is paired-end data, finding a tool that keeps the paired-end structure of the files intact will be very important.
+%One that is installed on the computers we are using is \texttt{fastx_clipper}.
+%Have a look at the help page \& given your experience above, see if you can understand how you would use this tool. \\
+%\begin{lstlisting}
+%fastx_clipper -h
+%\end{lstlisting}
+%The previously utilised tool \texttt{fastq-mcf} is another which performs this feature, as is the tool \texttt{cutadapt}.
+%The paper recommended earlier in this session has a good review of some of these tools.
+%\end{advanced}
+The iCLIP files that we have are not paired however, so these will be easy for us to try \& tidy up.
+First, we should remove the low quality reads that have the \texttt{1:Y:0} chastity filter flag set.
+We can use the tool \texttt{fastq_illumina_filter} for this
 \begin{lstlisting}
-fastx_clipper -h
+cd
+mkdir -p filteredData/iCLIP
+fastq_illumina_filter -o ~/filteredData/iCLIP/iCLIP_Sample1.fastq iCLIP_Sample1.fastq
+fastq_illumina_filter -o ~/filteredData/iCLIP/iCLIP_Sample2.fastq iCLIP_Sample2.fastq
+mkdir -q ~/QC/iCLIP_filtered
+cd ~/filteredData/iCLIP
+fastqc -o ~/QC/iCLIP_filtered -t 2 iCLIP_Sample1.fastq iCLIP_Sample2.fastq
 \end{lstlisting}
-The previously utilised tool \texttt{fastq-mcf} is another which performs this feature, as is the tool \texttt{cutadapt}.
-The paper recommended earlier in this session has a good review of some of these tools.
-\end{advanced}
+
+Now inspect the \texttt{fastqc} reports for these files and note if there has been any improvement.
+\begin{questions}
+How many sequences were removed from each file as a result of this step?
+This can often be important information to report as it gives a guide to the overall quality of the library. \\
+\begin{answer}
+Haven't had time to check the numbers. 
+Sorry...
+\end{answer}
+\end{questions}
+
+Now that we have removed the low quality reads we are ready to remove the adapters, however, this may not be an immediately obvious task.
+The first question to ask is, how do we find what the adapter sequence is?
+
+
+
+
+
 
 
 \section{De-multiplexing Data}
