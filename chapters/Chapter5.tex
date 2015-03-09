@@ -11,10 +11,10 @@ The tools we use to inspect these files are provided in the package samtools, wh
 
 \begin{steps}
 The reads from the previous dataset which mapped to \textit{chr2L} of \textit{D. melanogaster} are in the folder \texttt{\~{}/mapped}.
-Let's look at the first 10 lines of the file.
+Let's look at the first 5 lines of the file.
 \begin{lstlisting}
 cd ~/mapped
-head chr2L.sam  
+head -n5 chr2L.sam  
 \end{lstlisting}
 \end{steps}
 
@@ -180,3 +180,45 @@ samtools view chr2L.bam | egrep '[0-9]+M[0-9]+N[0-9]+M' | head
 To really do it correctly, you'd probably have to fudge a new sam file with the header, the cat the output \& convert to BAM
 \end{answer}
 \end{advanced}
+
+\section{Viewing the Alignments}
+In this final section we will use the package IGV Viewer to inspect the alignments in this bam file.
+We are going to use the IGV genome browser, which has been installed on your VM.
+
+\subsection{Sorting And Indexing Our BAM Files}
+To better visualise our alignments, we first need to sort our bam file so that all the alignments are in order.
+The second step will be to index the sorted file to enable faster file access by the browser.
+
+\begin{lstlisting}
+cd ~/mapped
+samtools sort chr2L.bam chr2L.sorted
+samtools index chr2L.sorted.bam
+\end{lstlisting}
+
+Note that in keeping with the weirdness of bioinformatics the input file is not specified last in the tool \texttt{samtools sort}.
+This would normally be the convention but for some reason the programmers have not followed this.
+The final setting given to the cammand is the prefix that the output file will be given. \\
+
+The command \texttt{samtools index} then created a file with the exact same name as the input file, but with the extra suffix \texttt{.bai}, which indicates this is an index file.
+
+Now that we've got our files ready to view we can load the IGV browser.
+This may take a minute or two so please be patient.
+
+\begin{lstlisting}
+igv
+\end{lstlisting}
+
+Once the browser has opened, go to the drop-down menu \& load the genome for \textit{Drospohila melanogaster} (dm3).
+(This will create a .genome file in your \texttt{~/igv} folder.)
+Now we can load our sorted .bam file using  \textit{File $>$ Load from File} in the top menu, and make sure you load the sorted .bam file.
+This will automatically check for the indexed file we created a minute ago. \\
+
+In the second ``button" go to the region chr2L, then enter the word \textit{poe} in the window next to this.
+This will take us to the gene \textit{poe} and we will be able to see the reads in our .bam file that have been aligned to this gene.
+Unfortunately with these alignments, the further out we zoom we will begin to lose our alignment information.
+
+Have a look at the gene \textit{drongo} as well, and have a look around by clicking the navigation at the very top of the graphical display.
+
+
+
+

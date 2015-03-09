@@ -137,13 +137,13 @@ Note the ``Y'' in the final fields, which indicates this sequence would have fai
 These low-quality reads were automatically removed in early versions of the pipeline and were omitted from the fastq file.
 However, they are now included with this additional field indicated in the read identifier.
 Inspection of the read identifiers will enable you to find out which version of the casava pipeline has been used, and whther you need to perform any additional filtering steps to remove low quality reads. 
-The tool \texttt{fastq_illumina_filter} is designed to remove these reads for you \& the tool, along with usage instructions can be found at \url{http://cancan.cshl.edu/labmembers/gordon/fastq_illumina_filter/}\\
+The tool \texttt{fastq_illumina_filter} is designed to remove these reads for you \& the tool, along with usage instructions can be found at \url{http://cancan.cshl.edu/labmembers/gordon/fastq_illumina_filter/}.\\
 \end{information}
 
 \begin{steps}
 An alternate set of reads which we'll also explore today is in included in the directory \texttt{\~{}/rawData/iCLIP}.
 These are immunopreciptated mRNAs and were supplied by some collaborators who'd either forgotten the removal of low-quality reads or had deliberately neglected step to increase read numbers.
-Note that these files are not compressed and are essentially plain text files, so we can inspect them using the command \texttt{head}.\\
+Note that these files are not compressed and are essentially plain text files, so we can directly inspect them using the command \texttt{head} instead of decompressing first.\\
 \end{steps}
 
 \begin{lstlisting}
@@ -179,6 +179,8 @@ The two main systems in common usage are PHRED +33 and PHRED +64 and for each of
 For example, in PHRED +33, the @ symbol corresponds to Q = 64 - 33 = 31, whereas in PHRED +64 it corresponds to Q = 64 - 64 = 0. \\
 \end{information}
 
+\begin{minipage}{\textwidth}
+
 The following table demonstrates the comparative coding scale for the different formats: \\
 
 \scriptsize
@@ -198,12 +200,13 @@ LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL......................................
  J - Illumina 1.5+ Phred+64,  raw reads typically (3, 40) \\
  L - Illumina 1.8+ Phred+33,  raw reads typically (0, 41) \\
 }
-\normalsize
+%\normalsize
+\end{minipage}
 
 \begin{questions}
 Which coding system do you think has been used for the RNA-Seq reads that we have? \\
 \begin{answer}
-PHRED+33
+PHRED+33\\
 \end{answer}
 In the PHRED +33 coding system, the character `@' is used.
 Can you think of any potential issues this would cause when searching within a fastq file? \\
@@ -281,9 +284,6 @@ Look up the following options to find what they mean. \\
   -t & \\
    & \\
    \hline
-   -a & \\
-   & \\
-  \hline
 \end{tabular}
 \end{center}
 \end{steps}
@@ -393,7 +393,7 @@ mkdir ~/QC/iCLIP
 cd ~/rawData/iCLIP
 fastqc -o ~/QC/iCLIP -t 2 iCLIP_Sample1.fastq iCLIP_Sample2.fastq
 cd ~/QC/iCLIP
-firefox iCLIP_Sample1.fastqc.html iCLIP_Sample1.fastqc.html &
+firefox iCLIP_Sample1.fastqc.html iCLIP_Sample2.fastqc.html &
 \end{lstlisting}
 
 There are several things to note about these reports.
@@ -410,7 +410,7 @@ The overall lower distribution of the quality scores should raise a red flag to 
 \paragraph{Adapter Contamination}
 Go to the over-represented sequences section for Sample1.
 There seem to be a large number of over-represented sequences here which are not listed as matching any known sequences.
-Scanning through these manually is near impossible and solving this may take some leg work
+Scanning through these manually is near impossible and solving this may take some leg work.
 Shift over to the same section in Sample2 and you will notice about 23\% of sequences seem to contain an Illumina Paired End PCR Primer.
 The next line also contains matches to this but with some indels. \\
 
@@ -479,7 +479,9 @@ Each .zip archive contains text files with the information which can easily be p
 Whilst this will require low-level scripting skills to perform on an experiment, we can quickly look at two of the important files today.
 The overall summary in terms of PASS/FAIL is contained in the `summary.txt' file within the archive.
 Open this file in the \texttt{less} pager, and once you've had a look type \texttt{q} to quit, as we have become familiar with.
+First make sure you are in the correct directory, then inspect these files using \texttt{less}.
 \begin{lstlisting}
+cd ~/QC/RNASeq
 unzip -oc reads1.fq_fastqc.zip '*summary.txt' | less
 \end{lstlisting}
 

@@ -3,7 +3,9 @@
 %% Spend more time of adapter trimming
 
 Once we have inspected our data \& have an idea of how accurate our reads are, as well as any other technical issues that may be within the data, we may need to trim or filter the reads to make sure we are aligning or analysing sequences that accurately represent our source material.
-There are numerous approaches \& considerations so we will look at a few ways to clean our data.
+As we've noticed, the quality of reads commonly drops off towards the end of the reads, and dealing with this behaviour is an important part of most processing pipelines.
+Sometimes we will require reads of identical lengths for our downstream analysis, whilst other times we can use reads of varying lengths.
+The data cleaning steps we choose for our own analysis will inevitably be influenced by our downstream requirements.
 
 \section{Read Trimming}
 Read trimming can be done in a variety of different ways, so choose a method which best suits your data. 
@@ -11,7 +13,7 @@ Here we will give examples of fixed-length trimming and quality-based trimming.
 
 \subsection{Fixed Length Trimming}
 One method of improving the quality of the base calls in your dataset is to remove the low quality bases at the end using fixed-length trimming, via a tool such as \texttt{fastx_trimmer} from the FASTX-Toolkit.
-It is worth noting that reads shorter than 20bp can be increasingly difficult to map uniquely to the reference genome, so keeping any trimmed reads longer than this is a more ideal strategy.
+It is worth noting that reads shorter than 20bp can be increasingly difficult to map uniquely to the reference genome, so keeping any trimmed reads longer than this is usually a more ideal strategy.
 We will write the trimmed data as a new file so we should create a new directory to write this modified data to first.
 We should also check the help page for the \texttt{fastx_trimmer} command
 \begin{steps}
@@ -26,6 +28,10 @@ fastx_trimmer -h
 Now we can trim the data to just the first 32 bases.
 Also note from the help page above, that if no input file is specified the command looks to the standard input (\textit{stdin}) for the reads.
 As this tool cannot process gzipped (i.e. compressed) files, we can thus decompress it using \texttt{zcat} as beforehand, and feed this to the command via the pipe (|).
+\end{steps}
+\begin{warning}
+Don't forget that the appearance of the \textbackslash  symbol at the end of the line is just to let you know that the printer has manually broken a single line of code.
+\end{warning}
 \begin{lstlisting}
 cd ~/rawData/RNASeq
 zcat reads1.fq.gz | fastx_trimmer -Q 33 -f 1 -l 32 -z -o \
@@ -33,7 +39,6 @@ zcat reads1.fq.gz | fastx_trimmer -Q 33 -f 1 -l 32 -z -o \
 zcat reads2.fq.gz | fastx_trimmer -Q 33 -f 1 -l 32 -z -o \
    ~/trimmedData/RNASeq/reads2_trimmed.fq.gz
 \end{lstlisting}
-\end{steps}
 
 \begin{note}
 We used the following options in the command above:
@@ -57,10 +62,11 @@ Open the new QC reports in \texttt{firefox} \& compare with the original reports
 
 
 \subsection{Quality Based Trimming}
-Base call quality scores can also be used to dynamically determine the trim points for each read. 
+Instead of just removing all of the sequence data from the end of our reads, the base call quality scores can also be used to dynamically determine the trim points for each read. 
 A quality score threshold and minimum read length following trimming can be used to remove low quality data. \\
 \begin{steps}
-First we'll have a look at the help page, then we  run the following command to quality trim your data:
+First we'll have a look at the help page, then we  run the following command to quality trim your data.
+This may take a minute or two so don't panic if it looks like nothing is happening.
 \begin{lstlisting}
 cd ~/rawData/RNASeq
 fastq_quality_trimmer -h
@@ -96,7 +102,7 @@ The Q scores are slightly higher for the fixed length trimmed sequences. \\
 Did you observe any unexpected behaviour? \\
 \begin{answer}
 Yes, quality trimmed sequences didn't behave how I expected \& there were scores below 20 in the trimmed data.
-Buggered if I know why, but it's probably good to show people that things don't always work as expected \& a fair bit of head scratching will be involved. \\
+Trimming is actually performed using an algorithm that averages scores across a region, so it's probably good to show people that things don't always work as expected \& a fair bit of head scratching will be involved. \\
 \end{answer}
 
 Did the number of reads change depending on the trimming method? \\
@@ -114,25 +120,28 @@ This would make any paired end analysis much more difficult and further steps wo
 
 \section{Read Filtering}
 Another alternative to trimming reads would be to filter out reads which are low quality.
-The tool \texttt{fastq_quality_filter} is available for this approach.
+In the next section we'll remove reads from the iCLIP dataset which fail the Illumina Chastity Filter, but sometimes we can still be left with some low quality reads in our data. 
+The tool \texttt{fastq_quality_filter} is available for this approach, which we will utilise for the RNA-Seq dataset.
 \begin{lstlisting}
 fastq_quality_filter -h
 \end{lstlisting}
 
 \begin{steps}
 By now we are becoming familiar with the commands, so once again let's create new gzipped fastq files with the filtered data.
-Once these processes are complete, inspect the reports obtained by \texttt{fastqc}.
+Once these processes are complete, inspect the reports obtained by \texttt{fastqc}.\\
+\begin{minipage}{\textwidth}
 \begin{lstlisting}
 cd ~
 mkdir -p filteredData/RNASeq
 cd ~/rawData/RNASeq
-zcat reads1.fq.gz | fastq_quality_filter -Q 33 -q 20 -p 90 -z -o \
-   ~/filteredData/RNASeq/reads1_qual_filtered.fq.gz
-zcat reads2.fq.gz | fastq_quality_filter -Q 33 -q 20 -p 90 -z -o \
-   ~/filteredData/RNASeq/reads2_qual_filtered.fq.gz
+zcat reads1.fq.gz | fastq_quality_filter -Q 33 -q 20 -p 90 -z \
+  -o  ~/filteredData/RNASeq/reads1_qual_filtered.fq.gz
+zcat reads2.fq.gz | fastq_quality_filter -Q 33 -q 20 -p 90 -z \
+  -o  ~/filteredData/RNASeq/reads2_qual_filtered.fq.gz
 cd ~/filteredData/RNASeq
 fastqc -o ~/QC/RNASeq -t 2 reads1_qual_filtered.fq.gz reads2_qual_filtered.fq.gz
 \end{lstlisting}
+\end{minipage}
 \end{steps}
 
 \begin{note}
@@ -148,7 +157,7 @@ fastqc -o ~/QC/RNASeq -t 2 reads1_qual_filtered.fq.gz reads2_qual_filtered.fq.gz
 \begin{questions}
 Did we lose a significant number of reads by filtering the data? \\
 \begin{answer}
-Yes, we lost about 5-10\% of the reads from each of the files. \\
+Yes, we lost about 10-20\% of the reads from each of the files. \\
 \end{answer}
 
 Did this do a better job of improving the quality of the reads that any of the above methods? \\
@@ -184,12 +193,17 @@ fastq-mcf -h | less
 
 \begin{steps}
 For the following code, use the help page to answer the following questions.
-Note that the file \texttt{adapters.fa} is also be required, which contains the Illumina adapter sequences.
+Note that the file \texttt{adapters.fa} is also be required, which contains the Illumina adapter sequences. \\
+\end{steps}
+\begin{minipage}{\textwidth}
 \begin{lstlisting}
 cd ~/rawData/RNASeq
-fastq-mcf adapters.fa reads1.fq.gz reads2.fq.gz -o ~/filteredData/RNASeq/reads1_mcffilt.fq.gz -o ~/filteredData/RNASeq/reads2_mcffilt.fq.gz -q 30 -P 33 -l 32 --max-ns 1  
+fastq-mcf adapters.fa reads1.fq.gz reads2.fq.gz \
+  -o ~/filteredData/RNASeq/reads1_mcffilt.fq.gz \
+  -o ~/filteredData/RNASeq/reads2_mcffilt.fq.gz \
+  -q 30 -P 33 -l 32 --max-ns 1  
 \end{lstlisting}
-\end{steps}
+\end{minipage}
 
 \begin{note}
 \begin{description}[style=multiline,labelindent=0cm,align=right,leftmargin=0.8\descriptionlabelspace,rightmargin=1.5cm,font=\ttfamily]
@@ -235,9 +249,10 @@ First we'll need to create a directory to write the filtered data to, the we use
 \begin{lstlisting}
 cd
 mkdir -p filteredData/iCLIP
+cd rawData/iCLIP
 fastq_illumina_filter -N -o ~/filteredData/iCLIP/iCLIP_Sample1.fastq iCLIP_Sample1.fastq
 fastq_illumina_filter -N -o ~/filteredData/iCLIP/iCLIP_Sample2.fastq iCLIP_Sample2.fastq
-mkdir -q ~/QC/iCLIP_filtered
+mkdir -p ~/QC/iCLIP_filtered
 cd ~/filteredData/iCLIP
 fastqc -o ~/QC/iCLIP_filtered -t 2 iCLIP_Sample1.fastq iCLIP_Sample2.fastq
 \end{lstlisting}
@@ -248,7 +263,7 @@ How many sequences were removed from each file as a result of this step?
 This can often be important information to report as it gives a guide to the overall quality of the library. \\
 \begin{answer}
 Haven't had time to check the numbers. 
-Sorry...
+Sorry... \\
 \end{answer}
 \end{questions}
 
@@ -256,12 +271,12 @@ Now that we have removed the low quality reads we are ready to remove the adapte
 The first question to ask is, how do we find what the adapter sequence is?
 The fastqc reports suggested the Illumina Universal Adapter in the plots, whilst the reports for the second sample suggested it was a paired end primer.
 Fortunately the tool \texttt{fastqc} comes with some sequences which make a good starting point.
-This is contained in a sub-directory which the software was downloaded \& unzipped into, which in our installation is \texttt{/opt/Fastqc/Configuration}.
+This is contained in a sub-directory which the software was downloaded \& unzipped into, which in our installation is \texttt{/opt/FastQC/Configuration}.
 
 \begin{steps}
 Change into the directory \& see what files are there:
 \begin{lstlisting}
-cd /opt/Fastqc/Configuration
+cd /opt/FastQC/Configuration
 ls -lh
 \end{lstlisting}
 \end{steps}
@@ -278,6 +293,7 @@ egrep 'Paired End PCR' contaminant_list.txt
 \begin{steps}
 Now we have some potential adapter sequences we can look in our reads \& see if they're prevalent.
 First we'll look for the Universal Adapter \& then the first few nuecleotides from the Paired End PCR Primer.
+In the code below the option \texttt{-m10} is telling \texttt{egrep} to only give us the first 10 matches.
 \begin{lstlisting}
 cd ~/filteredData/iCLIP
 egrep -m10 'AGATCGGAAGA' iCLIP_Sample1.fastq
@@ -286,14 +302,15 @@ egrep -m10 'CAAGCAGAAGA' iCLIP_Sample1.fastq
 \end{steps}
 
 \begin{questions}
-Using egrep, how many reads match these sequences in each of the samples?\\
+Using \texttt{egrep -c}, find how many reads match these sequences in each of the samples.
+(NB: You won't need to set the option -m10 for this step)\\
 \begin{answer}
 15499 \& 14246 matches to the Universal Adapter.
-0 \& 3 matches to the Paired End PCR Primer.
+0 \& 3 matches to the Paired End PCR Primer.\\
 \end{answer}
 
-Inspect the matches carefully (the option -m10 is telling egrep to only give us the first 10 matches).
-Have we found our contaminant?
+Inspect the matches carefully.
+Have we found our contaminant? \\
 \begin{answer}
 No. 
 Most of the matches have the same long trailing sequence after the match.
@@ -304,7 +321,7 @@ There are also quite a few upstream sequences of interest, although these don't 
 Fortunately for this dataset the protocols were available, and inspecting the P3 primer reveals this as the potential contaminant.
 Now we have identified the culprit we can set about removing this sequence from our reads.
 Using \texttt{firefox} navigate to the help page for the tool \texttt{cutadapt}.
-If you like typing it's \url{http://cutadapt/readthedocs.org/}, and this url can also be found on the second page of the command line help.
+If you like typing it's \url{http://cutadapt.readthedocs.org/}, and this url can also be found on the second page of the command line help.
 Click the \textit{User Guide} for a very helpful description of adapter contamination.
 
 \begin{questions}
@@ -317,30 +334,36 @@ Before we decide to remove this contamination, we also need to consider whether 
 In the following code, what is the minimum length that we have selected and what is the minimum quality score?\\
 \begin{answer}
 Reads less than 20nt will be discarded after adapter removal, and those with a quality score less than 20 will also be thrown away.
+By default, the command \texttt{cutadapt} will write a whole lot of useful information to \textit{stdout}.
+In the following code note that we are directing this to a file, which is very good practice and can be quite useful later on.
 \end{answer}
 \end{questions}
 
 \begin{steps}
+\begin{minipage}{\textwidth}
 \begin{lstlisting}
 cd
 mkdir -p trimmedData/iCLIP
 cutadapt -q 20 -m 20 -a 'AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCG' -o trimmedData/iCLIP/iCLIP_Sample1.fastq filteredData/iCLIP/iCLIP_Sample1.fastq > cutadapt.Sample1.log
 \end{lstlisting}
+\end{minipage}
 Repeat this process for the second sample, and run fastqc on them both.
+To do this just use the arrow up in the terminal to get the previous command, then change all of the occurrences of \texttt{Sample1} to \texttt{Sample2}.
 \end{steps}
 
 \begin{questions}
-Did this solve our adapter contamination problem?
+Did this solve our adapter contamination problem?\\
 \begin{answer}
 For the most part.
 There are still some sequences that appear to be over-represented, but these will probably have other origins.
 \end{answer}
 \end{questions}
 
-\begin{information}
-Note that we also created log files of the process.
-This is a very useful idea and checking these can alert us to problems in the adapter removal process, such as if one base seems to regularly appear immediately upstream of the removed sequence, we might need to reconsider our suspected adapter sequence.
-\end{information}
+\begin{steps}
+Inspect the log files that we have created using the commands \texttt{cat, head} or \texttt{less}.
+These can be very helpful and alert us to if we haven't removed all the adapter sequence.
+For example, if you see a message telling you that 80\% of adapters had a `T' beforehand, that may be a sign that we haven't entered the complete adapter sequence.
+\end{steps}
 
 \section{De-multiplexing Data}
 

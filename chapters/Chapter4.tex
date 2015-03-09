@@ -123,7 +123,9 @@ Unfortunately, this will take hours on our VMs so we can't really perform it in 
 Instead, a set of aligned files should be on your VM in the folder \texttt{\~{}/mapped}, which we will explore in the next section.
 Please do not run this, but if we wanted to align the trimmed reads, the command would look like the following.
 \begin{lstlisting}
-tophat Drosophila_melanogaster.BDGP5.25.62.dna_rm.toplevel  ~/trimmedData/reads1_trimmed.fq.gz ~/trimmedData/reads2_trimmed.fq.gz
+tophat Drosophila_melanogaster.BDGP5.25.62.dna_rm.toplevel  \
+  ~/trimmedData/reads1_trimmed.fq.gz \
+  ~/trimmedData/reads2_trimmed.fq.gz
 \end{lstlisting}
 
 \begin{advanced}
