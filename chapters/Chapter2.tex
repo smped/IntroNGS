@@ -13,19 +13,16 @@
 Before we can begin to analyse any data, it is helpful to understand how it was generated.
 Whilst there are numerous platforms for generation of NGS data, today we will look at the Illumina \textit{Sequencing by Synthesis} method, which is one of the most common methods in use today.
 Many of you will be familiar with the process involved, but it may be worth looking at the following 5-minute video from Illumina: \url{http://youtu.be/womKfikWlxM} 
-As setting up the sound with the VMs can be tricky, it will be easier to view this from your own regular browser.
-Briefly minimise the VM (see Section 1.4), open your regular browser \& please use your headphones if you brought them. \\
+%As setting up the sound with the VMs can be tricky, it will be easier to view this from your own regular browser.
+%Briefly minimise the VM (see Section 1.4), open your regular browser \& please use your headphones if you brought them. \\
 \end{steps}
 
 \begin{note}
 This video refers to the process \textit{tagmentation}.
 This is a relatively recent method for fragmenting \& attaching adaptors to DNA, with an alternative, more traditional method being sonication, poly-adenylation \& attachment of appropriate adaptors in separate steps.
-\end{note}
-
-\begin{information}
 The important concept to note during sample preparation is that the DNA insert has multiple sequences ligated to either end.
 These include 1) the \textit{sequencing primers}, 2) index or \textit{barcode} sequences, and 3) the flow-cell binding oligos.
-\end{information}
+\end{note}
 
 \begin{questions}
 Assuming each 'spot' on the flowcell is generated from a unique DNA sequence, there are two important sequencing errors that will occur during this process.
@@ -41,6 +38,12 @@ Will these errors have a more significant effect if they occur during the sequen
 The earlier in the process any sequencing errors occur, the higher the degree to which they will be propagated.
 If an error occurs during the very first round of amplification, before even bridge amplification, it will be propagated through an entire cluster. \\
 \end{answer}
+
+Will all of the individual ssDNA molecules within a spot be amplified perfectly in sync with each other?\\
+\begin{answer}
+No.  As the reads become longer, the more molecules will get out of sync (i.e. phase) with each other.
+As a result the quality scores will drop off towards the end of a read.
+\end{answer}
 \end{questions}
 
 \section{FASTQ File Format}
@@ -48,16 +51,16 @@ If an error occurs during the very first round of amplification, before even bri
 As the sequences are extended during the sequencing reaction, an image is recorded which is effectively a movie or series of frames at which the addition of bases is recorded \& detected.
 We mostly don't deal with these image files, but will handle data generated from these in \textit{fastq} format, which can commonly have the file suffix \textit{.fq} or \textit{.fastq}.
 As these files are often very large, they will often be zipped using \texttt{gzip} or \texttt{bzip}.
-Whilst we would instinctively want to unzip these files using the command \texttt{gunzip}, most NGS tools are able to work with zipped fastq files.
+Whilst we would instinctively want to unzip these files using the command \texttt{gunzip}, most NGS tools are able to work with zipped fastq files, and this is usually unnecessary.
 This can save considerable hard drive space, which is an important consideration when handling NGS datasets as the quantity of data can easily push your storage capacity to it's limit. \\
 \end{note}
 
 \begin{steps}
-We should still have a terminal open from the previous section \&, if necessary, use the \texttt{cd} command to make sure you are in the \texttt{\~{}/rawData/RNASeq} directory.
+We should still have a terminal open from the previous section \&, if necessary, use the \texttt{cd} command to make sure you are in the \texttt{\~{}/NGSData/RNASeq} directory.
 The command \texttt{zcat} unzips a file \& prints the output to the terminal, or standard output (\textit{stdout}).
 If we did this to these files, we would see a stream of data whizzing past in the terminal, but instead we can just pipe the output of \texttt{zcat} to the command head to view the first 10 lines of a file. \\
 \begin{lstlisting}
-zcat reads1.fq.gz | head
+zcat reads1.fq.gz | head -n8
 \end{lstlisting}
 \end{steps}
 
@@ -65,7 +68,8 @@ zcat reads1.fq.gz | head
 In the above command, we have used a trick commonly used in Linux systems where we have taken the output of one command (\texttt{zcat reads1.fq.gz}) and sent it to another command (\texttt{head}) by using the \textit{pipe symbol} (|).
 This is literally like sticking a pipe on the end of a process \& redirecting the output to the input another process.
 If you think of things as being like a data factory you can almost visualise it.
-There are no limits to the number of commands that you can string together using this trick. \\
+There are no limits to the number of commands that you can string together using this trick. 
+Additionally, we gave the argument \texttt{-n8} to the command \texttt{head} to ensure that we only printed the first eight lines.\\
 \end{information}
 
 \begin{warning}
@@ -77,21 +81,23 @@ Even experienced programmers rely on this trick from time to time.
 \end{warning}
 
 \begin{note}
-In the output from the above terminal command, we have obtained the first 10 lines of the gzipped fastq file.
+In the output from the above terminal command, we have obtained the first 8 lines of the gzipped fastq file.
 This gives a clear view of the fastq file format, where each individual read spans four lines.
 These lines are:
 \begin{enumerate}
 \item The read identifier
 \item The sequence read
-\item An alternate line for the identifier (commonly left blank as just a \texttt{+} symbol
-\item The quality scores for each position along the read
+\item An alternate line for the identifier (commonly left blank as just a \texttt{+} symbol acting as a placeholder)
+\item The quality scores for each position along the read as a series of ascii text characters.
 \end{enumerate}
 \end{note}
+
+Let's have a brief look at each of these lines and what they mean.\\
 
 \subsubsection*{The read identifier}
 This line begins with an \texttt{@} symbol and although there is some variability, it traditionally has several components.
 Today's data have been sourced from an EBI data repository with the identifier \texttt{SRR031714}.
-For the first sequence in this file, we have the full identifier \texttt{@SRR031714.1 HWI-EAS299_130MNEAAXX:2:1:785:591/1} which has the following components \\
+For the first sequence in this file, we have the full identifier \texttt{@SRR031714.1 HWI-EAS299_130MNEAAXX:2:1:785:591/1} which has the following components: \\
 
 \begin{tabular}{|p{5cm} | p{9cm} |}
   \hline
@@ -111,43 +117,44 @@ For the first sequence in this file, we have the full identifier \texttt{@SRR031
   \hline
 \end{tabular}
 
-As seen in the subsequent sections, these pieces of information can be helpful in identifying if any spatial effects have affected the quality of the reads.\\
+As seen in the subsequent sections, these pieces of information can be helpful in identifying if any spatial effects have affected the quality of the reads.
+By and large you won't need to utilise most of this information, but it can be handy for times of serious data exploration.\\
 
 \begin{steps}
 While we are inspecting our data, have a look at the beginning of the second file.
 \begin{lstlisting}
-zcat reads2.fq.gz | head
+zcat reads2.fq.gz | head -n8
 \end{lstlisting}
 Here you will notice that the information in the identifier is identical to the first file we inspected, with the exception that there is a \texttt{/2} at the end.
 This indicates that these reads are the second set in what are known as \textit{paired-end} reads, as were introduced in the above video.
 The two files will have this identical structure where the order of the sequences in one is identical to the order of the sequences in the other.
-This way when they are read as a pair, they can be stepped through read-by-read \& the integrity of the data will be intact.
+This way when they are read as a pair of files, they can be stepped through read-by-read \& the integrity of the data will be kept intact.
 \end{steps}
-
 
 \subsubsection{The Illumina Chastity Filter}
 \begin{information}
 It is also worth noting that the reads we've just glanced at come from a version of the Illumina \textit{casava} pipeline which is \textless 1.8, and which is a relatively common format.
-For more recently generated reads which have used \textgreater 1.8 of the casava pipeline, there is an additional field in the identifier which indicates whether a read would have \textit{failed} an initial QC check. 
+The casava version really just describes how old the software on the Illumina machine is \& we don't choose this.
+For more recently generated reads where the casava software is \textgreater 1.8 of the casava, there is an additional field in the identifier which indicates whether a read would have \textit{failed} an initial QC check. 
 An example of this format would be:
 \begin{lstlisting}
 @D5B4KKQ1:554:C4YHPACXX:4:1101:1084:2100 1:Y:0:
 \end{lstlisting}
-Note the ``Y'' in the final fields, which indicates this sequence would have failed QC.
-These low-quality reads were automatically removed in early versions of the pipeline and were omitted from the fastq file.
+Note the ``Y'' in the final fields, which indicates this sequence would have \textbf{failed} QC.
+These low-quality reads were automatically removed in earlier versions of the pipeline and were omitted from the fastq file.
 However, they are now included with this additional field indicated in the read identifier.
-Inspection of the read identifiers will enable you to find out which version of the casava pipeline has been used, and whther you need to perform any additional filtering steps to remove low quality reads. 
+Inspection of this line will enable you to find out which version of the casava pipeline has been used, and whether you need to perform any additional filtering steps to remove low quality reads. 
 The tool \texttt{fastq_illumina_filter} is designed to remove these reads for you \& the tool, along with usage instructions can be found at \url{http://cancan.cshl.edu/labmembers/gordon/fastq_illumina_filter/}.\\
 \end{information}
 
 \begin{steps}
-An alternate set of reads which we'll also explore today is in included in the directory \texttt{\~{}/rawData/iCLIP}.
+An alternate set of reads which we'll also explore today is in included in the directory \texttt{\~{}/NGSData/iCLIP}.
 These are immunopreciptated mRNAs and were supplied by some collaborators who'd either forgotten the removal of low-quality reads or had deliberately neglected step to increase read numbers.
 Note that these files are not compressed and are essentially plain text files, so we can directly inspect them using the command \texttt{head} instead of decompressing first.\\
 \end{steps}
 
 \begin{lstlisting}
-cd ~/rawData/iCLIP
+cd ~/NGSData/iCLIP
 head -n12 iCLIP_Sample1.fastq
 \end{lstlisting}
 
@@ -162,20 +169,24 @@ The first read would have failed (i.e. it is low quality), whilst the other two 
 \subsubsection{Quality Scores}
 \begin{information}
 The only other line in the fastq format that really needs some introduction is the quality score information.
-These are presented as single \textit{ascii} text characters for simple visual alignment with the sequence and each character corresponds to a numeric score.
-In the ascii text system, each character has a representation in binary, which can also be translated to decimal numbers.\\
+These are presented as single \textit{ascii} text characters for simple visual alignment with the sequence, and each character corresponds to a numeric value, which is the quality score.
+In the ascii text system, each character has a numeric value which we can interpret as an integer.
+Head to the website with a description of these at \url{http://en.wikipedia.org/wiki/ASCII#ASCII_printable_code_chart}.\\
 
-The first printable character in the ascii system is `!' which corresponds to the value 33. 
-(A space is also considered printable and has the value 32, but we can ignore that)
+The first 31 characters are non-printable \& contain things like end-of-line marks and tab spacings, and note that the first printable character after the space is `!' which corresponds to the value 33.
 In short, the values 33-47 are symbols like !, \", \#, \$ etc, whereas the values 48-57 are the characters 0-9.
-Next are some more symbols (including @ for the value 64), with the upper case characters representing the values 65-90 \& the lower case letters representing the values 97-122.
-For a full list of ascii characters see \url{http://en.wikipedia.org/wiki/ASCII#ASCII_printable_code_chart}.
+Next are some more symbols (including @ for the value 64), with the upper case characters representing the values 65-90 \& the lower case letters representing the values 97-122.\\
+
+In the line of quality scores for the first read in the iCLIP sample above, the first character is ``=", so this base has a quality score of 61.
+The second symbol in this line is``D", so the second base has a quality score of 68.
 \end{information}
 
 \subsubsection{The PHRED +33/64 Scoring System}
 \begin{information}
 Now that we understand how to turn the quality scores from an ascii character into a numeric value, we need to know what these numbers represent.
-The two main systems in common usage are PHRED +33 and PHRED +64 and for each of these coding systems we either subtract 33 or 64 from the numeric value associated with each ascii character to give us a PHRED score (or Q-value)
+The two main systems in common usage are PHRED +33 and PHRED +64 and for each of these coding systems we either subtract 33 or 64 from the numeric value associated with each ascii character to give us a PHRED score (or Q-value discussed later).
+The system used is determined by the software installed on the sequencing machine, with early machines using PHRED + 64 (casava \textless 1.5)..
+Later machines tend to use PHRED + 33.
 For example, in PHRED +33, the @ symbol corresponds to Q = 64 - 33 = 31, whereas in PHRED +64 it corresponds to Q = 64 - 64 = 0. \\
 \end{information}
 
@@ -184,9 +195,7 @@ For example, in PHRED +33, the @ symbol corresponds to Q = 64 - 33 = 31, whereas
 The following table demonstrates the comparative coding scale for the different formats: \\
 
 \scriptsize
-\texttt{SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS..................................................... \\
-..........................XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX...................... \\
-...............................IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII...................... \\
+\texttt{...............................IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII...................... \\
 .................................\textbf{J}JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ...................... \\
 LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL.................................................... \\
 !"\#\$\%\&'()*+,-./0123456789:;\textless =\textgreater?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\textbackslash]\^{}_`abcdefghijklmnopqrstuvwxyz\{|\}\~{}} \\
@@ -194,8 +203,6 @@ LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL......................................
 ~~|~~~~~~~~~~~~~~~~~~~~~~~~~|~~~~|~~~~~~~~|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|~~~~~~~~~~~~~~~~~~~~~|~\\
 ~33~~~~~~~~~~~~~~~~~~~~~~~~59~~~64~~~~~~~73~~~~~~~~~~~~~~~~~~~~~~~~~~~~104~~~~~~~~~~~~~~~~~~~126~\\
 ~ \\
- S - Sanger        Phred+33,  raw reads typically (0, 40) \\
- X - Solexa        Solexa+64, raw reads typically (-5, 40) \\
  I - Illumina 1.3+ Phred+64,  raw reads typically (0, 40) \\ 
  J - Illumina 1.5+ Phred+64,  raw reads typically (3, 40) \\
  L - Illumina 1.8+ Phred+33,  raw reads typically (0, 41) \\
@@ -292,7 +299,7 @@ Look up the following options to find what they mean. \\
 As we have two RNA-Seq files, we will first need to create the output directory, then we can run \texttt{fastqc} using 2 threads which will ensure the files are processed in parallel.
 This can be much quicker when dealing with large experiments.
 \begin{lstlisting}
-cd ~/rawData/RNASeq
+cd ~/NGSData/RNASeq
 mkdir -p ~/QC/RNASeq
 fastqc -o ~/QC/RNASeq -t 2 reads1.fq.gz reads2.fq.gz
 \end{lstlisting}
@@ -390,7 +397,7 @@ Let's run \texttt{fastqc} \& inspect the iCLIP dataset, which is a version of RN
 
 \begin{lstlisting}
 mkdir ~/QC/iCLIP
-cd ~/rawData/iCLIP
+cd ~/NGSData/iCLIP
 fastqc -o ~/QC/iCLIP -t 2 iCLIP_Sample1.fastq iCLIP_Sample2.fastq
 cd ~/QC/iCLIP
 firefox iCLIP_Sample1.fastqc.html iCLIP_Sample2.fastqc.html &
