@@ -1,13 +1,233 @@
 \chapter{Trimming, Filtering \& Pre-Processing Data}
 
-%% Spend more time of adapter trimming
+%% Spend more time on adapter trimming
 
 Once we have inspected our data \& have an idea of how accurate our reads are, as well as any other technical issues that may be within the data, we may need to trim or filter the reads to make sure we are aligning or analysing sequences that accurately represent our source material.
 As we've noticed, the quality of reads commonly drops off towards the end of the reads, and dealing with this behaviour is an important part of most processing pipelines.
 Sometimes we will require reads of identical lengths for our downstream analysis, whilst other times we can use reads of varying lengths.
 The data cleaning steps we choose for our own analysis will inevitably be influenced by our downstream requirements.
 
-\section{Read Trimming}
+\section{The Basic Workflow}
+
+Data cleaning \& pre-processing can involve many steps, and today we will use the basic work-flow as outlined in the following flow chart.
+Every analysis is slightly different so some steps may or may not be required for your own data.
+Some steps do have a little overlap, and some pipelines (e.g. \textit{Stacks}) may perform some of these steps for you.\\
+
+Unfortunately, for the purposes of keeping today's datasets manageable, we will be working on data that has already been demultiplexed.
+We will perform most steps on files at this stage, rather than on a complete library, but the principle is essentially the same.\\
+
+% Define block styles
+\tikzstyle{block} = [rectangle, draw, fill=blue!20,  text width=4cm, text centered, rounded corners, minimum height=1.7cm]
+\tikzstyle{line} = [draw, -latex']
+\tikzstyle{cloud} = [draw, rectangle,fill=red!20, node distance=5cm, minimum height=1.2cm, minimum width=3cm,  text centered, rounded corners]
+
+\begin{figure}
+	\centering
+	\begin{tikzpicture}[node distance = 2.5cm, auto]
+	
+	    % Place nodes
+	    \node [block] (lib) {Complete Library (i.e. 1 Flowcell Lane)};
+	    \node [block, below of=lib] (flag) {Removal of Low Quality Reads};
+	    \node [block, below of=flag] (adapt) {Remove Adapters};
+	    \node [block, below of=adapt] (trim) {Read Trimming \&/or Filtering};
+		\node [block, below of=trim] (demult) {Demultiplexing};
+		\node [block, below of=demult] (align) {Alignment To Reference};
+		\node [block, below of=align] (bam) {Filtering Post-Alignment};
+		
+		% Place Clouds
+		\node [cloud, right of=flag] (filt) {\footnotesize{fastq_illumina_filter}};
+		\node [cloud, right of=adapt] (cutadapt) {\footnotesize{cutadapt}};
+		\node [cloud, right of=trim] (fastx) {
+			\begin{tabular}{c}
+			\footnotesize{fastq_quality_trimmer} \\ 
+			\footnotesize{fastx_trimmer}
+			\end{tabular}};
+		\node [cloud, right of=demult] (fastqm) { \footnotesize{fastq_multx}};
+		\node [cloud, right of=align] (tophat) {\footnotesize{tophat}};
+		\node [cloud, right of=bam] (samtools) {\footnotesize{samtools view}};
+
+	    % Draw edges
+	    \path [line] (lib) -- (flag);
+	    \path [line] (flag) -- (adapt);
+	    \path [line] (adapt) -- (trim);
+	    \path [line] (trim) -- (demult);
+	    \path [line] (demult) -- (align);
+	    \path [line] (align) -- (bam);
+	    \path [line,dashed] (filt) -- (flag);
+	    \path [line,dashed] (cutadapt) -- (adapt);
+	    \path [line,dashed] (fastx) -- (trim);
+	    \path [line,dashed](fastqm) -- (demult);
+	    \path [line, dashed] (tophat) -- (align);
+	    \path [line, dashed] (samtools) -- (bam);
+
+	\end{tikzpicture}
+\end{figure}
+
+
+\section{Removal of Low Quality Reads}
+
+\begin{information}
+In earlier versions of the \textit{CASAVA} pipeline, low quality reads were automatically filtered out.
+However, on some rare occasions researchers wanted those reads to try \& extract additional information from their samples.
+Thus data generated using later versions of the software retains these reads and they must be removed by researchers instead of the data providers. \\
+\end{information}
+
+As discussed earlier, reads that fail will have the flag \texttt{1:Y:0} set as part of the identifier, and by switching the \texttt{--casava} option on during \texttt{fastqc}, we were able to see what the samples would look like after removal of these reads.
+Note, that they were not removed during this stage, but rather they were ignored whilst the QC steps were being run. \\
+
+\begin{steps}
+To remove these reads, we can use the tool \texttt{fastq_illumina_filter}, which simply creates a new set of \texttt{fastq} files with only the reads we wish to keep, i.e. those with the \texttt{1:N:0} flag set.
+\begin{lstlisting}
+cd ~/NGSData/iCLIP
+mkdir filteredData
+cd rawData
+fastq_illumina_filter -N -o ../filteredData/iCLIP_Sample1.fastq iCLIP_Sample1.fastq
+fastq_illumina_filter -N -o ../filteredData/iCLIP_Sample2.fastq iCLIP_Sample2.fastq
+\end{lstlisting}
+\end{steps}
+
+\begin{questions}
+Notice that in the above code, we used the setting \texttt{-o ../filteredData/iCLIP_Sample1.fastq}.
+What did this mean?\\
+\begin{answer}
+We wrote the output to the directory filteredData, which was a subdirectory of the directory one step up form the current directory.
+\end{answer}
+\end{questions}
+
+\begin{information}
+Now that we have the filtered fastq files, we should run \texttt{fastqc} on them.
+A sensible idea for organising the QC files is to mirror the directory structure of the fastq files.
+You'll also notice that these fastqc report are near identical to those produced using the \texttt{-{}-casava} flag earlier.
+However, this time we have run the command on files where the low quality reads have been removed so we don't need the \texttt{-{}-casava} option set. \\
+\end{information}
+
+\begin{steps}
+\begin{lstlisting}
+cd ../filteredData
+mkdir -p ~/QC/iCLIP/filteredData
+fastqc -o ~/QC/iCLIP/filteredData -t 2 iCLIP_Sample1.fastq iCLIP_Sample2.fastq
+\end{lstlisting}
+\end{steps}
+
+\section{Adapter Removal}
+
+Looking through the fastqc files generated after removal of the chastity-filtered reads, reveals that we have some adapter sequences present in our read.
+These are caused by inserts that are shorter than our read lengths, and if your data has been size selected, this may not be a problem you have to worry about.
+However, it is very common for RNA seq experiments.\\
+
+The tool we'll use today is \texttt{cutadapt} \& it's one of the few bioinformatics tools to have a helpful webpage, so head to the site \url{http://cutadapt.readthedocs.org/}.
+
+\begin{questions}
+On the \texttt{cutadapt} webpage, navigate to the User Guide, then the section marked Trimming Reads.
+Which type of adapter contamination would give the plots seen the fastqc output files we have seen for the iCLIP data?\\
+\begin{answer}
+3' contamination, as expected by short inserts.
+\end{answer}
+\end{questions}
+
+\subsection{Single End Data}
+
+The first question to ask is, how do we find what the adapter sequence is?
+The fastqc reports suggested the Illumina Universal Adapter in the plots, whilst the reports for the second sample suggested it was a paired end primer.
+Fortunately the tool \texttt{fastqc} comes with some sequences which make a good starting point.
+This is contained in a sub-directory which the software was downloaded \& unzipped into, which in our installation is \texttt{/opt/FastQC/Configuration}.
+
+\begin{steps}
+Change into the directory \& see what files are there:
+\begin{lstlisting}
+cd /opt/FastQC/Configuration
+ls -lh
+\end{lstlisting}
+\end{steps}
+
+\begin{steps}
+The two files of interest are called \texttt{adapter_list.txt} and \texttt{contaminant_list.txt}.
+To find the sequences associated with our potential adapters, we can look in these files.
+\begin{lstlisting}
+egrep 'Universal' adapter_list.txt
+egrep 'Paired End PCR' contaminant_list.txt
+\end{lstlisting}
+\end{steps}
+
+\begin{steps}
+Now we have some potential adapter sequences we can look in our reads \& see if they're prevalent.
+First we'll look for the Universal Adapter \& then the first few nuecleotides from the Paired End PCR Primer.
+In the code below the option \texttt{-m10} is telling \texttt{egrep} to only give us the first 10 matches.
+\begin{lstlisting}
+cd ~/filteredData/iCLIP
+egrep -m10 'AGATCGGAAGA' iCLIP_Sample1.fastq
+egrep -m10 'CAAGCAGAAGA' iCLIP_Sample1.fastq
+\end{lstlisting}
+\end{steps}
+
+\begin{questions}
+Using \texttt{egrep -c}, find how many reads match these sequences in each of the samples.
+(NB: You won't need to set the option -m10 for this step)\\
+\begin{answer}
+15499 \& 14246 matches to the Universal Adapter.
+0 \& 3 matches to the Paired End PCR Primer.\\
+\end{answer}
+
+Inspect the matches carefully.
+Have we found our contaminant? \\
+\begin{answer}
+No. 
+Most of the matches have the same long trailing sequence after the match.
+There are also quite a few upstream sequences of interest, although these don't seem to be as obvious.
+\end{answer}
+\end{questions}
+
+Fortunately for this dataset the protocols were available, and inspecting the P3 primer reveals this as the potential contaminant.
+Now we have identified the culprit we can set about removing this sequence from our reads.
+Before we decide to remove this contamination, we also need to consider whether we throw away any reads which are too short, or which have low quality scores.
+
+\begin{questions}
+In the following code, what is the minimum length that we have selected and what is the minimum quality score?\\
+\begin{answer}
+Reads less than 20nt will be discarded after adapter removal, and those with a quality score less than 20 will also be thrown away.
+By default, the command \texttt{cutadapt} will write a whole lot of useful information to \textit{stdout}.
+In the following code note that we are directing this to a file, which is very good practice and can be quite useful later on.
+\end{answer}
+\end{questions}
+
+\begin{steps}
+\begin{minipage}{\textwidth}
+\begin{lstlisting}
+cd ~/NGSData/iCLIP
+mkdir trimmedData
+cutadapt -q 20 -m 20 -a 'AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCG' -o trimmedData/iCLIP_Sample1.fastq filteredData/iCLIP_Sample1.fastq > cutadapt.Sample1.log
+\end{lstlisting}
+\end{minipage}
+Repeat this process for the second sample, and run fastqc on them both.
+To do this just use the arrow up in the terminal to get the previous command, then change all of the occurrences of \texttt{Sample1} to \texttt{Sample2}.
+\end{steps}
+
+\begin{questions}
+Did this solve our adapter contamination problem?\\
+\begin{answer}
+For the most part.
+There are still some sequences that appear to be over-represented, but these will probably have other origins.
+Any residual adapter sequence in the last base or two of a read will remain though
+\end{answer}
+\end{questions}
+
+\begin{steps}
+Inspect the log files that we have created using the commands \texttt{cat, head} or \texttt{less}.
+These can be very helpful and alert us to if we haven't removed all the adapter sequence.
+For example, if you see a message telling you that 80\% of adapters had a `T' beforehand, that may be a sign that we haven't entered the complete adapter sequence.
+\end{steps}
+
+%%%%%%%%%%%%%%
+%% EDIT POINT
+%%%%%%%%%%%%%%
+
+\subsection{Paired-End Data}
+% Add a section here
+
+\section{Read Trimming \&/or Filtering}
+Now that we have removed the worst of the reads, we need to sort through the remaining reads and decide on what is the most appropriate for our particular experiment.
+
+
 Read trimming can be done in a variety of different ways, so choose a method which best suits your data. 
 Here we will give examples of fixed-length trimming and quality-based trimming.
 
@@ -180,190 +400,60 @@ Knowing where to look for the answers is one of the best skills you can have.
 \end{advanced}
 
 
-\subsubsection{Paired-End Reads}
-\begin{information}
-The above steps took us through a few of the alternatives for trimming \& filtering our data.
-Each method has it's pros \& cons, but any method which discards sequences can disrupt the important relationship between two files which make up paired-end reads.
-An alternative tool for filtering files in these pairs is \texttt{fastq-mcf}.
-We can view the help file using
-\begin{lstlisting}
-fastq-mcf -h | less
-\end{lstlisting}
-\end{information}
+%\subsubsection{Paired-End Reads}
+%\begin{information}
+%The above steps took us through a few of the alternatives for trimming \& filtering our data.
+%Each method has it's pros \& cons, but any method which discards sequences can disrupt the important relationship between two files which make up paired-end reads.
+%An alternative tool for filtering files in these pairs is \texttt{fastq-mcf}.
+%We can view the help file using
+%\begin{lstlisting}
+%fastq-mcf -h | less
+%\end{lstlisting}
+%\end{information}
+%
+%\begin{steps}
+%For the following code, use the help page to answer the following questions.
+%Note that the file \texttt{adapters.fa} is also be required, which contains the Illumina adapter sequences. \\
+%\end{steps}
+%\begin{minipage}{\textwidth}
+%\begin{lstlisting}
+%cd ~/rawData/RNASeq
+%fastq-mcf adapters.fa reads1.fq.gz reads2.fq.gz \
+%  -o ~/filteredData/RNASeq/reads1_mcffilt.fq.gz \
+%  -o ~/filteredData/RNASeq/reads2_mcffilt.fq.gz \
+%  -q 30 -P 33 -l 32 --max-ns 1  
+%\end{lstlisting}
+%\end{minipage}
+%
+%\begin{note}
+%\begin{description}[style=multiline,labelindent=0cm,align=right,leftmargin=0.8\descriptionlabelspace,rightmargin=1.5cm,font=\ttfamily]
+%\item[-o] Output file name(s)
+%\item[-q 30] quality score threshold of 30
+%\item[-P 33] Indicates the input quality scores are Phred+33 encoded
+%\item[-l 32] Minimum remaining sequence length
+%\item[--max-ns 1] Maximum N-calls in a read
+%\end{description}
+%Also notice that this command auto-detected the compression of the output files
+%\end{note}
+%
+%\begin{questions}
+%This time, do the filtered files have the same number of files? \\
+%\begin{answer}
+%Yes, this has kept the structure of the fastq files intact between the pairs. \\
+%\end{answer}
+%Why was the file adapters.fa necessary? \\
+%\begin{answer}
+%This command is designed to trim \& remove adapters from reads as part of the process.
+%This functionality cannot be turned off so we need to include this file.\\
+%\end{answer}
+%Will it make any difference if the reads in each pair are different lengths?\\
+%\begin{answer}
+%Not really. As long as both are able to be aligned to the reference.
+%\end{answer}
+%\end{questions}
 
-\begin{steps}
-For the following code, use the help page to answer the following questions.
-Note that the file \texttt{adapters.fa} is also be required, which contains the Illumina adapter sequences. \\
-\end{steps}
-\begin{minipage}{\textwidth}
-\begin{lstlisting}
-cd ~/rawData/RNASeq
-fastq-mcf adapters.fa reads1.fq.gz reads2.fq.gz \
-  -o ~/filteredData/RNASeq/reads1_mcffilt.fq.gz \
-  -o ~/filteredData/RNASeq/reads2_mcffilt.fq.gz \
-  -q 30 -P 33 -l 32 --max-ns 1  
-\end{lstlisting}
-\end{minipage}
-
-\begin{note}
-\begin{description}[style=multiline,labelindent=0cm,align=right,leftmargin=0.8\descriptionlabelspace,rightmargin=1.5cm,font=\ttfamily]
-\item[-o] Output file name(s)
-\item[-q 30] quality score threshold of 30
-\item[-P 33] Indicates the input quality scores are Phred+33 encoded
-\item[-l 32] Minimum remaining sequence length
-\item[--max-ns 1] Maximum N-calls in a read
-\end{description}
-Also notice that this command auto-detected the compression of the output files
-\end{note}
-
-\begin{questions}
-This time, do the filtered files have the same number of files? \\
-\begin{answer}
-Yes, this has kept the structure of the fastq files intact between the pairs. \\
-\end{answer}
-Why was the file adapters.fa necessary? \\
-\begin{answer}
-This command is designed to trim \& remove adapters from reads as part of the process.
-This functionality cannot be turned off so we need to include this file.\\
-\end{answer}
-Will it make any difference if the reads in each pair are different lengths?\\
-\begin{answer}
-Not really. As long as both are able to be aligned to the reference.
-\end{answer}
-\end{questions}
 
 
-\section{Adapter Clipping}
-The RNA-Seq data we have been using above showed no contamination from adapter sequences, but there are tools for removing these if present.
-As this data is paired-end data, finding a tool that keeps the paired-end structure of the files intact will be very important.
-The iCLIP files that we have are not paired however, so these will be easy for us to try \& tidy up.
-First, we should remove the low quality reads that have the \texttt{1:Y:0} chastity filter flag set.
-We can use the tool \texttt{fastq_illumina_filter} for this.
-First check the help page:\\
-\begin{lstlisting}
-fastq_illumina_filter -h |  less
-\end{lstlisting}
-
-First we'll need to create a directory to write the filtered data to, the we use the option \texttt{-N} to tell the tool to keep the reads that pass the chastity filter.
-
-\begin{lstlisting}
-cd
-mkdir -p filteredData/iCLIP
-cd rawData/iCLIP
-fastq_illumina_filter -N -o ~/filteredData/iCLIP/iCLIP_Sample1.fastq iCLIP_Sample1.fastq
-fastq_illumina_filter -N -o ~/filteredData/iCLIP/iCLIP_Sample2.fastq iCLIP_Sample2.fastq
-mkdir -p ~/QC/iCLIP_filtered
-cd ~/filteredData/iCLIP
-fastqc -o ~/QC/iCLIP_filtered -t 2 iCLIP_Sample1.fastq iCLIP_Sample2.fastq
-\end{lstlisting}
-
-Now inspect the \texttt{fastqc} reports for these files and note if there has been any improvement.
-\begin{questions}
-How many sequences were removed from each file as a result of this step?
-This can often be important information to report as it gives a guide to the overall quality of the library. \\
-\begin{answer}
-Haven't had time to check the numbers. 
-Sorry... \\
-\end{answer}
-\end{questions}
-
-Now that we have removed the low quality reads we are ready to remove the adapters, however, this may not be an immediately obvious task.
-The first question to ask is, how do we find what the adapter sequence is?
-The fastqc reports suggested the Illumina Universal Adapter in the plots, whilst the reports for the second sample suggested it was a paired end primer.
-Fortunately the tool \texttt{fastqc} comes with some sequences which make a good starting point.
-This is contained in a sub-directory which the software was downloaded \& unzipped into, which in our installation is \texttt{/opt/FastQC/Configuration}.
-
-\begin{steps}
-Change into the directory \& see what files are there:
-\begin{lstlisting}
-cd /opt/FastQC/Configuration
-ls -lh
-\end{lstlisting}
-\end{steps}
-
-\begin{steps}
-The two files of interest are called \texttt{adapter_list.txt} and \texttt{contaminant_list.txt}.
-To find the sequences associated with our potential adapters, we can look in these files.
-\begin{lstlisting}
-egrep 'Universal' adapter_list.txt
-egrep 'Paired End PCR' contaminant_list.txt
-\end{lstlisting}
-\end{steps}
-
-\begin{steps}
-Now we have some potential adapter sequences we can look in our reads \& see if they're prevalent.
-First we'll look for the Universal Adapter \& then the first few nuecleotides from the Paired End PCR Primer.
-In the code below the option \texttt{-m10} is telling \texttt{egrep} to only give us the first 10 matches.
-\begin{lstlisting}
-cd ~/filteredData/iCLIP
-egrep -m10 'AGATCGGAAGA' iCLIP_Sample1.fastq
-egrep -m10 'CAAGCAGAAGA' iCLIP_Sample1.fastq
-\end{lstlisting}
-\end{steps}
-
-\begin{questions}
-Using \texttt{egrep -c}, find how many reads match these sequences in each of the samples.
-(NB: You won't need to set the option -m10 for this step)\\
-\begin{answer}
-15499 \& 14246 matches to the Universal Adapter.
-0 \& 3 matches to the Paired End PCR Primer.\\
-\end{answer}
-
-Inspect the matches carefully.
-Have we found our contaminant? \\
-\begin{answer}
-No. 
-Most of the matches have the same long trailing sequence after the match.
-There are also quite a few upstream sequences of interest, although these don't seem to be as obvious.
-\end{answer}
-\end{questions}
-
-Fortunately for this dataset the protocols were available, and inspecting the P3 primer reveals this as the potential contaminant.
-Now we have identified the culprit we can set about removing this sequence from our reads.
-Using \texttt{firefox} navigate to the help page for the tool \texttt{cutadapt}.
-If you like typing it's \url{http://cutadapt.readthedocs.org/}, and this url can also be found on the second page of the command line help.
-Click the \textit{User Guide} for a very helpful description of adapter contamination.
-
-\begin{questions}
-Which type of adapter contamination do we have? \\
-\begin{answer}
-3'
-\end{answer}
-
-Before we decide to remove this contamination, we also need to consider whether we throw away any reads which are too short, or which have low quality scores.
-In the following code, what is the minimum length that we have selected and what is the minimum quality score?\\
-\begin{answer}
-Reads less than 20nt will be discarded after adapter removal, and those with a quality score less than 20 will also be thrown away.
-By default, the command \texttt{cutadapt} will write a whole lot of useful information to \textit{stdout}.
-In the following code note that we are directing this to a file, which is very good practice and can be quite useful later on.
-\end{answer}
-\end{questions}
-
-\begin{steps}
-\begin{minipage}{\textwidth}
-\begin{lstlisting}
-cd
-mkdir -p trimmedData/iCLIP
-cutadapt -q 20 -m 20 -a 'AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCG' -o trimmedData/iCLIP/iCLIP_Sample1.fastq filteredData/iCLIP/iCLIP_Sample1.fastq > cutadapt.Sample1.log
-\end{lstlisting}
-\end{minipage}
-Repeat this process for the second sample, and run fastqc on them both.
-To do this just use the arrow up in the terminal to get the previous command, then change all of the occurrences of \texttt{Sample1} to \texttt{Sample2}.
-\end{steps}
-
-\begin{questions}
-Did this solve our adapter contamination problem?\\
-\begin{answer}
-For the most part.
-There are still some sequences that appear to be over-represented, but these will probably have other origins.
-\end{answer}
-\end{questions}
-
-\begin{steps}
-Inspect the log files that we have created using the commands \texttt{cat, head} or \texttt{less}.
-These can be very helpful and alert us to if we haven't removed all the adapter sequence.
-For example, if you see a message telling you that 80\% of adapters had a `T' beforehand, that may be a sign that we haven't entered the complete adapter sequence.
-\end{steps}
 
 \section{De-multiplexing Data}
 
