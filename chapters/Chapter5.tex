@@ -2,7 +2,7 @@
 
 \section{The SAM/BAM file format}
 \begin{information}
-Reads that have been to a reference are no longer stored in fastq format but are stored in either SAM or BAM format.
+Reads that have been aligned to a reference are no longer stored in fastq format but are stored in either SAM or BAM format.
 These two formats are virtually identical, however the SAM format is a text file which is easily readable to human eyes, whilst a BAM file is the same information converted to binary.
 This conversion means that file sizes are smaller, and that computational processes can be performed more efficiently.
 Typically, we work with BAM files as these provide gains in storage space \& analytic speed.
@@ -10,10 +10,10 @@ The tools we use to inspect these files are provided in the package samtools, wh
 \end{information}
 
 \begin{steps}
-The reads from the previous dataset which mapped to \textit{chr2L} of \textit{D. melanogaster} are in the folder \texttt{\~{}/mapped}.
+The reads from the previous dataset which mapped to \textit{chr2L} of \textit{D. melanogaster} are in the folder \texttt{\~{}/NGSData/RNASeq/alignedData}.
 Let's look at the first 5 lines of the file.
 \begin{lstlisting}
-cd ~/mapped
+cd ~/NGSData/RNASeq/alignedData
 head -n5 chr2L.sam  
 \end{lstlisting}
 \end{steps}
@@ -41,7 +41,7 @@ What kind of information does the header provide? \\
 \begin{itemize}
 \item @HD: Header line; VN: Format version; SO: the sort order of alignments.
 \item @SQ: Reference sequence information; SN: reference sequence name; LN: reference sequence length.
-\item @PG: Read group information; ID: Read group identifier; VN: Program version; CL: the command line that produces the alignment.
+\item @PG: Read group information; ID: Read group identifier; VN: Program version; CL: the command line that produced the alignments.
 \end{itemize}
 \end{answer}
 \end{questions}
@@ -53,7 +53,7 @@ Whilst this line of code may look counter-intuitive, remember that the first sec
 First look through the help page to understand what you are asking the tool to perform. \\
 \begin{lstlisting}
 samtools view 
-samtools view -bSo chr2L.bam chr2L.sam
+samtools view -bS -o chr2L.bam chr2L.sam
 \end{lstlisting}
 Have a look at the file sizes to see the difference.
 Note that the BAM file is about 12\% of the size, which can be an important consideration when managing large datasets.
@@ -76,6 +76,13 @@ samtools view chr2L.bam | head
 \end{lstlisting}
 As this data can easily spill across lines, it might be helpful to maximise your terminal to see the complete line structure.
 \end{steps}
+
+\begin{questions}
+Why didn't we need to set the \texttt{-b} or \texttt{-S} option when running \texttt{samtools view} in the previous two lines?\\
+\begin{answer}
+These option is only used when specifying the output as a BAM file (-b) and the input as a SAM file (-S).\\
+\end{answer}
+\end{questions}
 
 \subsection{The SAM/BAM data structure}
 \begin{information}
@@ -114,7 +121,13 @@ For example, if the read is paired \& mapped in a proper pair, but no other attr
 \end{information}
 
 \begin{questions}
-What value could a flag take if the read was 1 - paired; 2 - mapped in a proper pair; 3 - it was the first in the pair \& 4 - the alignment was a supplementary alignment. \\
+What value could a flag take if it had the following set of properties?
+	\begin{enumerate}
+	\item the read was paired; 
+	\item the read was mapped in a proper pair
+	\item the read was was the first in the pair; \& 
+	\item the alignment was a supplementary alignment
+	\end{enumerate}
 \begin{answer}
 2115 \\
 \end{answer}
@@ -151,6 +164,7 @@ ls -lh
 You can pull out highly specific combinations of alignments should you so choose
 \end{information}
 
+
 \subsection{CIGAR strings}
 \begin{note}
 These give useful information about the type of alignment that has been performed on the read.
@@ -171,45 +185,56 @@ This may represent a splice junction as determined by \texttt{tophat}
 Knowing this pattern as splice junctions, you could write a \textit{regular expression} search to find only the alignments that contain potential splice junctions.
 \begin{questions}
 What would be a pattern to search for, and how would you create this as a new BAM file.
-\end{questions}
 \begin{answer}
 This will pull out the first few.
 \begin{lstlisting}
 samtools view chr2L.bam | egrep '[0-9]+M[0-9]+N[0-9]+M' | head
 \end{lstlisting}
-To really do it correctly, you'd probably have to fudge a new sam file with the header, the cat the output \& convert to BAM
+To really do it correctly, you'd probably have to fudge a new sam file with the header, the cat the output \& convert to BAM.
 \end{answer}
+\end{questions}
 \end{advanced}
 
 \section{Viewing the Alignments}
 In this final section we will use the package IGV Viewer to inspect the alignments in this bam file.
 We are going to use the IGV genome browser, which has been installed on your VM.
+This is just a simple tool for manually inspecting your alignments, and getting a feel for what levels of coverage you have in your data, or if there are any strange artefacts.
 
-\subsection{Sorting And Indexing Our BAM Files}
-To better visualise our alignments, we first need to sort our bam file so that all the alignments are in order.
+\subsection{Sorting and Indexing Our BAM Files}
+\begin{note}
+To visualise our alignments, we first need to sort our bam file so that all the alignments are in order based on each chromosome, instead of the order they appeared in the source fastq file.
+This allows much faster searching of the files, and also allows for better compression.
 The second step will be to index the sorted file to enable faster file access by the browser.
+\end{note}
 
+\begin{steps}
 \begin{lstlisting}
-cd ~/mapped
+cd ~/NGSData/RNASeq/alignedData
 samtools sort chr2L.bam chr2L.sorted
 samtools index chr2L.sorted.bam
 \end{lstlisting}
+\end{steps}
 
-Note that in keeping with the weirdness of bioinformatics the input file is not specified last in the tool \texttt{samtools sort}.
-This would normally be the convention but for some reason the programmers have not followed this.
-The final setting given to the cammand is the prefix that the output file will be given. \\
+\begin{information}
+Note that in keeping with the weirdness of bioinformatics \textit{the input file is not specified last in the tool} \texttt{samtools sort}.
+This would normally be the convention but for some reason the programmers have chosen not to follow this convention.
+The final setting given to the command is the prefix that the output file will be given. \\
+\end{information}
 
-The command \texttt{samtools index} then created a file with the exact same name as the input file, but with the extra suffix \texttt{.bai}, which indicates this is an index file.
+The command \texttt{samtools index} then created a file with the exact same name as the input file, but with the extra suffix \texttt{.bai}, which indicates this is an index file.\\
 
+\begin{steps}
 Now that we've got our files ready to view we can load the IGV browser.
 This may take a minute or two so please be patient.
 
 \begin{lstlisting}
 igv
 \end{lstlisting}
+\end{steps}
 
+\begin{steps}
 Once the browser has opened, go to the drop-down menu \& load the genome for \textit{Drospohila melanogaster} (dm3).
-(This will create a .genome file in your \texttt{~/igv} folder.)
+(This will create a .genome file in your \texttt{\~{}/igv} folder.)
 Now we can load our sorted .bam file using  \textit{File $>$ Load from File} in the top menu, and make sure you load the sorted .bam file.
 This will automatically check for the indexed file we created a minute ago. \\
 
@@ -218,7 +243,13 @@ This will take us to the gene \textit{poe} and we will be able to see the reads 
 Unfortunately with these alignments, the further out we zoom we will begin to lose our alignment information.
 
 Have a look at the gene \textit{drongo} as well, and have a look around by clicking the navigation at the very top of the graphical display.
+\end{steps}
 
-
+\section{Bonus For Those Well Ahead of the Pack}
+\begin{advanced}
+For those who still feel like they want more, try running an entire pipeline on the iCLIP data, including adapter removal and read trimming.
+Record your commands in the \texttt{gedit} text editor so you have a record of what you did.
+Instead of aligning to the entire human genome, try just aligning to chromosome 17.
+\end{advanced}
 
 

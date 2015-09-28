@@ -5,8 +5,8 @@
 \begin{note}
 Once we have cleaned our data of any contaminating sequences, and removed the bases which are more likely to contain errors we can more confidently align our reads to a reference.
 Different experiments may have different reference sequences depending on the context.
-For example, if we have a subsample of the genome associated with restriction sites like RAD-Seq, we would probably align to a reference genome, or if we have RNA-Seq we might align to the transcriptome.
-Alternatively, we might be interested in \textit{de novo} genome assembly where have no reference genome to compare our data to.
+For example, if we have a subsample of the genome associated with restriction sites like RAD-Seq, we would probably align to a reference genome, or if we have RNA-Seq we might choose to align to the transcriptome instead of the whole genome.
+Alternatively, we might be interested in \textit{de novo} genome assembly where we have no reference genome to compare our data to.
 \end{note}
 
 \begin{questions}
@@ -15,9 +15,8 @@ What might be some of the disadvantages of either approach? \\
 \begin{answer}
 This is more of a discussion question for people to mull over.
 If aligning to the genome, we have the potential to discover novel transcribed regions, however dealing with alternate transcripts can still be difficult.
-Mapping to the transcriptome may be relatively easier \& faster due to the contiguous mappings,
-however alternate isoforms can still present difficulties.
-Novel isoforms will also fail to be detected using this approach. \\
+Mapping to the transcriptome may be relatively easier \& faster due to the contiguous mappings, however alternate isoforms can still present difficulties.
+Novel isoforms will also fail to be detected using this approach, or undocumented intergenic RNAs. \\
 \end{answer}
 \end{questions}
 
@@ -90,11 +89,12 @@ This tool is specially designed to handle splice junctions \& is highly suitable
 \begin{steps}
 Once again, we need to check the help pages.
 Unfortunately the \texttt{tophat} page isn't very friendly on the screen so after entering the following you might have to scroll up a little.
+There are a wealth of options available for you to look through.\\
 \begin{lstlisting}
 tophat -h
 \end{lstlisting}
-Here you can see all of the various options to specify, although the default settings are often a good starting point.
-We should also inspect the help page for \texttt{bowtie-build} which we will use to build the index.
+
+We should also inspect the help page for \texttt{bowtie-build} which we will use to build the index.\\
 \begin{lstlisting}
 bowtie-build -h
 \end{lstlisting}
@@ -102,9 +102,9 @@ Note that in the output from this process we are not going to specify a file, bu
 \end{steps}
 
 \begin{steps}
-Now that we've had a look, type to following command which will take a few minutes to run.
+Now that we've had a look, type to following command which will take a few minutes to run, so don't worry if it looks like nothing is happening.
 \begin{lstlisting}
- bowtie-build Drosophila_melanogaster.BDGP5.25.62.dna_rm.toplevel.fa Drosophila_melanogaster.BDGP5.25.62.dna_rm.toplevel
+bowtie-build Drosophila_melanogaster.BDGP5.25.62.dna_rm.toplevel.fa D_melanogaster.BDGP5.25.62.dna_rm.toplevel
 \end{lstlisting}
 Note that we could have specified anything as the basename, but keeping the key information which relates to the original file is often good practice, despite it making for long \& cumbersome commands.
 This is where using a text editor, with cut \& paste can make life a little easier.
@@ -121,11 +121,11 @@ Unfortunately the BWT transformed files are in binary, so we can't really see wh
 \subsection{Aligning the reads}
 Unfortunately, this will take hours on our VMs so we can't really perform it in the time we have for the workshop.
 Instead, a set of aligned files should be on your VM in the folder \texttt{\~{}/mapped}, which we will explore in the next section.
-Please do not run this, but if we wanted to align the trimmed reads, the command would look like the following.
+\textbf{Please do not run this}, but if we wanted to align the trimmed reads, the command would look like the following.
 \begin{lstlisting}
-tophat Drosophila_melanogaster.BDGP5.25.62.dna_rm.toplevel  \
-  ~/trimmedData/reads1_trimmed.fq.gz \
-  ~/trimmedData/reads2_trimmed.fq.gz
+tophat D_melanogaster.BDGP5.25.62.dna_rm.toplevel  \
+  ~/NGSData/RNASeq/trimmedData/reads1_trimmed.fq.gz \
+  ~/NGSData/RNASeq/trimmedData/reads2_trimmed.fq.gz
 \end{lstlisting}
 
 \begin{advanced}
