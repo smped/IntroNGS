@@ -154,7 +154,7 @@ Now we have some potential adapter sequences we can look in our reads \& see if 
 First we'll look for the Universal Adapter \& then the first few nuecleotides from the Paired End PCR Primer.
 In the code below the option \texttt{-m10} is telling \texttt{egrep} to only give us the first 10 matches.
 \begin{lstlisting}
-cd ~/filteredData/iCLIP
+cd ~/NGSData/iCLIP/filteredData
 egrep -m10 'AGATCGGAAGA' iCLIP_Sample1.fastq
 egrep -m10 'CAAGCAGAAGA' iCLIP_Sample1.fastq
 \end{lstlisting}
@@ -255,8 +255,8 @@ As this tool cannot process gzipped (i.e. compressed) files, we can thus decompr
 \begin{lstlisting}
 cd ~/NGSData/RNASeq/rawData
 mkdir -p ../trimmedData
-zcat reads1.fq.gz | fastx_trimmer -Q 33 -f 1 -l 32 -z -o  ../trimmedData/reads1_len_trimmed.fq.gz
-zcat reads2.fq.gz | fastx_trimmer -Q 33 -f 1 -l 32 -z -o ../trimmedData/reads_len_trimmed2.fq.gz
+zcat reads1.fq.gz | fastx_trimmer -Q 33 -f 1 -l 32 -z -o ../trimmedData/reads1_len_trimmed.fq.gz
+zcat reads2.fq.gz | fastx_trimmer -Q 33 -f 1 -l 32 -z -o ../trimmedData/reads2_len_trimmed.fq.gz
 \end{lstlisting}
 
 \begin{note}
@@ -290,7 +290,7 @@ This may take a minute or two so don't panic if it looks like nothing is happeni
 \begin{lstlisting}
 fastq_quality_trimmer -h
 cd ~/NGSData/RNASeq/rawData
-zcat reads1.fq.gz | fastq_quality_trimmer -Q 33 -t 20 -l 32 -z -o ../trimmedData/RNASeq/reads1_qual_trimmed.fq.gz
+zcat reads1.fq.gz | fastq_quality_trimmer -Q 33 -t 20 -l 32 -z -o ../trimmedData/reads1_qual_trimmed.fq.gz
 \end{lstlisting}
 \end{steps}
 

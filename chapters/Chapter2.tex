@@ -56,10 +56,11 @@ This can save considerable hard drive space, which is an important consideration
 \end{note}
 
 \begin{steps}
-We should still have a terminal open from the previous section \&, if necessary, use the \texttt{cd} command to make sure you are in the \texttt{\~{}/NGSData/RNASeq} directory.
+We should still have a terminal open from the previous section \&, if necessary, use the \texttt{cd} command to make sure you are in the \texttt{\~{}/NGSData/RNASeq/rawData} directory.
 The command \texttt{zcat} unzips a file \& prints the output to the terminal, or standard output (\textit{stdout}).
 If we did this to these files, we would see a stream of data whizzing past in the terminal, but instead we can just pipe the output of \texttt{zcat} to the command head to view the first 10 lines of a file. \\
 \begin{lstlisting}
+cd ~/NGSData/RNASeq/rawData
 zcat reads1.fq.gz | head -n8
 \end{lstlisting}
 \end{steps}
@@ -422,11 +423,11 @@ This is a plot that can cause significant confusion, but can alert you to any un
 Let's run \texttt{fastqc} \& inspect the iCLIP dataset, which is a version of RNA-Seq data where the RNA has been pulled down via IP after cross-linking to an RNA-associated protein.
 
 \begin{lstlisting}
-mkdir ~/QC/iCLIP/rawData
+mkdir -p ~/QC/iCLIP/rawData
 cd ~/NGSData/iCLIP/rawData
 fastqc -o ~/QC/iCLIP/rawData -t 2 iCLIP_Sample1.fastq iCLIP_Sample2.fastq
 cd ~/QC/iCLIP/rawData
-firefox iCLIP_Sample1.fastqc.html iCLIP_Sample2.fastqc.html &
+firefox iCLIP_Sample1_fastqc.html iCLIP_Sample2_fastqc.html &
 \end{lstlisting}
 
 There are several things to note about these reports.
@@ -447,7 +448,7 @@ You can ignore any warning messages you receive about not looking like part of a
 cd ~/NGSData/iCLIP/rawData
 fastqc --casava -o ~/QC/iCLIP/rawData -t 2 iCLIP_Sample1.fastq iCLIP_Sample2.fastq
 cd ~/QC/iCLIP/rawData
-firefox iCLIP_Sample1.fastqc.html iCLIP_Sample2.fastqc.html &
+firefox iCLIP_Sample1_fastqc.html iCLIP_Sample2_fastqc.html &
 \end{lstlisting}
 
 \begin{information}
